@@ -15,7 +15,7 @@ test.describe('Gnosis Validator Safe App', () => {
     await expect(page.locator('.header p').first()).toHaveText('Manage your validator rewards on Gnosis Chain');
 
     // Check that Connect Wallet section is visible
-    await expect(page.locator('h2')).toHaveText('Connect Your Wallet');
+    await expect(page.locator('h2').first()).toHaveText('Connect Your Wallet');
     await expect(page.locator('.card p').first()).toHaveText('Connect your wallet to view and claim your validator rewards.');
   });
 
@@ -43,7 +43,7 @@ test.describe('Gnosis Validator Safe App', () => {
 
     // Check error message appears
     await expect(page.locator('.error')).toBeVisible();
-    await expect(page.locator('.error')).toHaveText('MetaMask or compatible wallet not found. Please install a Web3 wallet.');
+    await expect(page.locator('.error')).toHaveText('Connection method not available. Please install a Web3 wallet or ensure Safe App context.');
   });
 
   test('should have proper CSS classes and styling', async ({ page }) => {
@@ -55,8 +55,8 @@ test.describe('Gnosis Validator Safe App', () => {
     // Check header section
     await expect(page.locator('.header')).toBeVisible();
 
-    // Check card elements
-    await expect(page.locator('.card')).toBeVisible();
+    // Check card elements (first card should be visible)
+    await expect(page.locator('.card').first()).toBeVisible();
 
     // Check button styling
     const connectButton = page.locator('#connect-button');
@@ -119,7 +119,7 @@ test.describe('Gnosis Validator Safe App', () => {
 
     // Check elements are still properly displayed
     await expect(page.locator('.header')).toBeVisible();
-    await expect(page.locator('.card')).toBeVisible();
+    await expect(page.locator('.card').first()).toBeVisible();
   });
 
   test('should have no console errors on initial load', async ({ page }) => {
