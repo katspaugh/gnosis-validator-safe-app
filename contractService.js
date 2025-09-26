@@ -11,30 +11,35 @@ import { makeContractCall, sendTransaction as sendAdapterTransaction } from './c
  */
 export async function callContract(contractAddress, data) {
     try {
-        // Try using the connection adapter first
+        // Try using the connection adapter first (handles Safe Apps SDK and wallet routing)
         const adapterResult = await makeContractCall(contractAddress, data);
         if (adapterResult !== null) {
             return adapterResult;
         }
         
-        // Fall back to existing logic for wallet connections
+        // For wallet connections, use wallet's RPC provider
         if (typeof window.ethereum !== 'undefined') {
-            const result = await window.ethereum.request({
-                method: 'eth_call',
-                params: [{
-                    to: contractAddress,
-                    data: data
-                }, 'latest']
-            });
-            
-            // Check if result is valid (not null, undefined, or '0x')
-            if (result && result !== '0x') {
-                return result;
+            try {
+                const result = await window.ethereum.request({
+                    method: 'eth_call',
+                    params: [{
+                        to: contractAddress,
+                        data: data
+                    }, 'latest']
+                });
+                
+                // Check if result is valid (not null, undefined, or '0x')
+                if (result && result !== '0x') {
+                    return result;
+                }
+                // If wallet call returns invalid result, continue to RPC fallback
+            } catch (walletError) {
+                console.warn('Wallet RPC call failed, falling back to public RPC:', walletError);
+                // Continue to public RPC fallback
             }
-            // If wallet call returns invalid result, continue to RPC fallback
         }
         
-        // Fall back to direct RPC call
+        // Fall back to direct RPC call only as last resort
         try {
             const response = await fetch(CONFIG.GNOSIS_RPC_URL, {
                 method: 'POST',
