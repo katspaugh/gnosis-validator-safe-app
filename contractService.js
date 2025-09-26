@@ -123,15 +123,7 @@ export async function sendTransaction(to, data, from) {
  */
 export async function getWithdrawableAmount(contractAddress, account) {
     const withdrawableData = FUNCTION_SELECTORS['withdrawableAmount(address)'] + encodeAddress(account);
-    
-    try {
-        return await callContract(contractAddress, withdrawableData);
-    } catch (error) {
-        console.warn('Primary withdrawableAmount call failed, trying alternative:', error);
-        // Try alternative function selector
-        const altWithdrawableData = FUNCTION_SELECTORS['withdrawableAmount_alt'] + encodeAddress(account);
-        return await callContract(contractAddress, altWithdrawableData);
-    }
+    return await callContract(contractAddress, withdrawableData);
 }
 
 /**
@@ -152,24 +144,8 @@ export async function getTokenBalance(tokenAddress, account) {
  * @returns {Promise<string>} Transaction hash
  */
 export async function claimWithdrawal(contractAddress, account) {
-    // Try the correct parameterless claimWithdrawal function first
-    try {
-        const claimData = FUNCTION_SELECTORS['claimWithdrawal()'];
-        return await sendTransaction(contractAddress, claimData, account);
-    } catch (error) {
-        console.warn('claimWithdrawal() call failed, trying with address parameter:', error);
-        
-        // Fallback to original methods with address parameter
-        try {
-            const claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
-            return await sendTransaction(contractAddress, claimData, account);
-        } catch (error) {
-            console.warn('claimWithdrawal(address) call failed, trying alternative:', error);
-            // Try alternative function selector
-            const claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
-            return await sendTransaction(contractAddress, claimData, account);
-        }
-    }
+    const claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
+    return await sendTransaction(contractAddress, claimData, account);
 }
 
 /**
