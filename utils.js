@@ -6,36 +6,7 @@
  * @returns {string} Formatted ether value with 6 decimal places
  */
 export function formatEther(value) {
-    // Handle null, undefined, or empty values
-    if (!value || value === '0x' || value === '0x0') {
-        return '0.000000';
-    }
-    
-    try {
-        // Convert hex to decimal, handling both '0x' prefixed and plain hex strings
-        const hexValue = value.startsWith('0x') ? value : '0x' + value;
-        const decimalValue = parseInt(hexValue, 16);
-        
-        // Check if conversion was successful
-        if (isNaN(decimalValue)) {
-            console.warn('formatEther: Invalid hex value received:', value);
-            return '0.000000';
-        }
-        
-        // Convert from wei to ether (divide by 10^18)
-        const etherValue = decimalValue / Math.pow(10, 18);
-        
-        // Check if result is valid
-        if (isNaN(etherValue) || !isFinite(etherValue)) {
-            console.warn('formatEther: Invalid ether value calculated from:', value);
-            return '0.000000';
-        }
-        
-        return etherValue.toFixed(6);
-    } catch (error) {
-        console.error('formatEther: Error processing value:', value, error);
-        return '0.000000';
-    }
+    return (parseInt(value, 16) / Math.pow(10, 18)).toFixed(6);
 }
 
 /**
