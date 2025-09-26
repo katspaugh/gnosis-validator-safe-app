@@ -4,28 +4,54 @@ let safeAppsSDK = null;
 let safeInfo = null;
 
 /**
- * Checks if Safe Apps SDK is available
- * @returns {boolean} True if SDK is available
+ * Dynamically imports the Safe Apps SDK
+ * @returns {Promise<any>} Safe Apps SDK class
  */
-function isSafeAppsSDKAvailable() {
-    return typeof window !== 'undefined' && window.SafeAppsSDK;
+async function importSafeAppsSDK() {
+    try {
+        // Try to import from CDN using ESM
+        const module = await import('https://unpkg.com/@safe-global/safe-apps-sdk@9.1.0/dist/index.js');
+        return module.default || module.SafeAppsSDK || module;
+    } catch (error) {
+        console.warn('Failed to import Safe Apps SDK from CDN:', error);
+        
+        // Fallback: check if globally available (for environments that load it differently)
+        if (typeof window !== 'undefined' && window.SafeAppsSDK) {
+            return window.SafeAppsSDK;
+        }
+        
+        throw new Error('Safe Apps SDK not available');
+    }
 }
 
 /**
- * Waits for Safe Apps SDK to load with timeout
+ * Checks if Safe Apps SDK is available (either globally or can be imported)
+ * @returns {Promise<boolean>} True if SDK is available
+ */
+async function isSafeAppsSDKAvailable() {
+    try {
+        await importSafeAppsSDK();
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
+
+/**
+ * Waits for Safe Apps SDK to be available with timeout
  * @param {number} timeout - Timeout in milliseconds
- * @returns {Promise<boolean>} True if SDK loaded successfully
+ * @returns {Promise<boolean>} True if SDK became available
  */
 function waitForSafeAppsSDK(timeout = 5000) {
-    return new Promise((resolve) => {
-        if (isSafeAppsSDKAvailable()) {
+    return new Promise(async (resolve) => {
+        if (await isSafeAppsSDKAvailable()) {
             resolve(true);
             return;
         }
 
         const startTime = Date.now();
-        const checkInterval = setInterval(() => {
-            if (isSafeAppsSDKAvailable()) {
+        const checkInterval = setInterval(async () => {
+            if (await isSafeAppsSDKAvailable()) {
                 clearInterval(checkInterval);
                 resolve(true);
             } else if (Date.now() - startTime > timeout) {
@@ -43,14 +69,15 @@ function waitForSafeAppsSDK(timeout = 5000) {
 export async function initSafeApp() {
     if (safeAppsSDK) return;
     
-    // Wait for SDK to load with timeout
-    const sdkLoaded = await waitForSafeAppsSDK();
-    if (!sdkLoaded) {
+    // Wait for SDK to be available with timeout
+    const sdkAvailable = await waitForSafeAppsSDK();
+    if (!sdkAvailable) {
         throw new Error('Safe Apps SDK failed to load. This may be due to network restrictions or the app not being loaded in a Safe context.');
     }
     
     try {
-        safeAppsSDK = new window.SafeAppsSDK();
+        const SafeAppsSDK = await importSafeAppsSDK();
+        safeAppsSDK = new SafeAppsSDK();
         safeInfo = await safeAppsSDK.safe.getInfo();
         console.log('Safe App initialized:', safeInfo);
     } catch (error) {
