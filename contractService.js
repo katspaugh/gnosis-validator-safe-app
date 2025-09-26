@@ -152,14 +152,31 @@ export async function getTokenBalance(tokenAddress, account) {
  * @returns {Promise<string>} Transaction hash
  */
 export async function claimWithdrawal(contractAddress, account) {
-    let claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
+    // Try parameterless claim functions first (most common for validator contracts)
+    const parameterlessMethods = [
+        'claim()',
+        'claimRewards()', 
+        'claimWithdrawal()'
+    ];
     
+    for (const method of parameterlessMethods) {
+        try {
+            const claimData = FUNCTION_SELECTORS[method];
+            return await sendTransaction(contractAddress, claimData, account);
+        } catch (error) {
+            console.warn(`${method} call failed:`, error);
+            // Continue to next method
+        }
+    }
+    
+    // Fallback to original methods with address parameter
     try {
+        const claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
         return await sendTransaction(contractAddress, claimData, account);
     } catch (error) {
-        console.warn('Primary claimWithdrawal call failed, trying alternative:', error);
+        console.warn('claimWithdrawal(address) call failed, trying alternative:', error);
         // Try alternative function selector
-        claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
+        const claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
         return await sendTransaction(contractAddress, claimData, account);
     }
 }

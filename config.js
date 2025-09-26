@@ -23,5 +23,9 @@ export const FUNCTION_SELECTORS = {
     'balanceOf(address)': '0x70a08231',
     'claimWithdrawal(address)': '0x4782f779',
     'withdrawableAmount_alt': '0x1ac51b98',
-    'claimWithdrawal_alt': '0x5cc4aa9f'
+    'claimWithdrawal_alt': '0x5cc4aa9f',
+    // Parameterless claim functions (common for validator contracts)
+    'claim()': '0x4e71d92d',
+    'claimRewards()': '0x372500ab',
+    'claimWithdrawal()': '0x3c565817'
 };
