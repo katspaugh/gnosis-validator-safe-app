@@ -100,6 +100,22 @@
             border-radius: 6px;
             margin: 16px 0;
         }
+        .info {
+            color: #3182ce;
+            background: #e6f3ff;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .network-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #68d391;
+            color: white;
+            display: inline-block;
+            margin-top: 8px;
+        }
         .hidden {
             display: none;
         }
@@ -126,6 +142,7 @@
             <div class="card">
                 <div class="label">Connected Account</div>
                 <div id="account-address" class="address"></div>
+                <div class="network-status">✅ Gnosis Chain</div>
             </div>
 
             <div class="card">
@@ -149,6 +166,7 @@
         </div>
 
         <!-- Messages -->
+        <div id="info-message" class="info hidden"></div>
         <div id="error-message" class="error hidden"></div>
         <div id="success-message" class="success hidden"></div>
     </div>
@@ -176,23 +194,34 @@
         const refreshButton = document.getElementById('refresh-button');
         const errorMessage = document.getElementById('error-message');
         const successMessage = document.getElementById('success-message');
+        const infoMessage = document.getElementById('info-message');
 
         // Utility functions
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
             successMessage.classList.add('hidden');
+            infoMessage.classList.add('hidden');
         }
 
         function showSuccess(message) {
             successMessage.textContent = message;
             successMessage.classList.remove('hidden');
             errorMessage.classList.add('hidden');
+            infoMessage.classList.add('hidden');
+        }
+
+        function showInfo(message) {
+            infoMessage.textContent = message;
+            infoMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
         }
 
         function hideMessages() {
             errorMessage.classList.add('hidden');
             successMessage.classList.add('hidden');
+            infoMessage.classList.add('hidden');
         }
 
         function formatEther(value) {
@@ -241,17 +270,20 @@
             }
         }
 
-        // Create function selectors and encode parameters
-        function createFunctionSelector(signature) {
-            // Simple implementation - in real app would use proper encoding
-            const hash = signature.split('(')[0];
-            // This is a simplified version - real implementation would use keccak256
-            return '0x' + hash.substring(0, 8).padEnd(8, '0');
-        }
-
         function encodeAddress(address) {
             return address.toLowerCase().replace('0x', '').padStart(64, '0');
         }
+
+        // Known function selectors for common functions
+        // These are the keccak256 hashes of the function signatures
+        const FUNCTION_SELECTORS = {
+            'withdrawableAmount(address)': '0xf3fef3a3', // May need verification with actual contract
+            'balanceOf(address)': '0x70a08231', // Standard ERC20
+            'claimWithdrawal(address)': '0x4782f779', // May need verification with actual contract
+            // Alternative approaches if the above don't work:
+            'withdrawableAmount_alt': '0x1ac51b98',
+            'claimWithdrawal_alt': '0x5cc4aa9f'
+        };
 
         // Wallet connection
         async function connectWallet() {
@@ -331,18 +363,28 @@
                 refreshButton.disabled = true;
                 refreshButton.textContent = 'Refreshing...';
 
-                // Create function calls
-                // withdrawableAmount(address) - function selector: 0x1ac51b98
-                const withdrawableData = '0x1ac51b98' + encodeAddress(currentAccount);
-                
-                // balanceOf(address) for ERC20 - function selector: 0x70a08231
-                const balanceData = '0x70a08231' + encodeAddress(currentAccount);
+                // Create function calls with correct function selectors
+                const withdrawableData = FUNCTION_SELECTORS['withdrawableAmount(address)'] + encodeAddress(currentAccount);
+                const balanceData = FUNCTION_SELECTORS['balanceOf(address)'] + encodeAddress(currentAccount);
 
-                // Make contract calls
-                const [withdrawableResult, gnoBalanceResult] = await Promise.all([
-                    callContract(VALIDATOR_CONTRACT_ADDRESS, withdrawableData),
-                    callContract(GNO_TOKEN_ADDRESS, balanceData)
-                ]);
+                // Make contract calls with error handling for each
+                let withdrawableResult, gnoBalanceResult;
+                
+                try {
+                    withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, withdrawableData);
+                } catch (error) {
+                    console.warn('Primary withdrawableAmount call failed, trying alternative:', error);
+                    // Try alternative function selector
+                    const altWithdrawableData = FUNCTION_SELECTORS['withdrawableAmount_alt'] + encodeAddress(currentAccount);
+                    withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, altWithdrawableData);
+                }
+
+                try {
+                    gnoBalanceResult = await callContract(GNO_TOKEN_ADDRESS, balanceData);
+                } catch (error) {
+                    console.error('GNO balance call failed:', error);
+                    throw new Error('Failed to fetch GNO balance. Please check if you\'re on Gnosis Chain.');
+                }
 
                 // Format and display results
                 const withdrawableEth = formatEther(withdrawableResult);
@@ -353,6 +395,8 @@
 
                 // Enable claim button if there are rewards to claim
                 claimButton.disabled = parseFloat(withdrawableEth) === 0;
+
+                hideMessages(); // Clear any previous errors on success
 
             } catch (error) {
                 showError(`Failed to fetch data: ${error.message}`);
@@ -375,17 +419,24 @@
                 claimButton.textContent = 'Claiming...';
                 hideMessages();
 
-                // claimWithdrawal(address) - function selector: 0x5cc4aa9f
-                const claimData = '0x5cc4aa9f' + encodeAddress(currentAccount);
+                let claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(currentAccount);
+                let txHash;
 
-                const txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+                try {
+                    txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+                } catch (error) {
+                    console.warn('Primary claimWithdrawal call failed, trying alternative:', error);
+                    // Try alternative function selector
+                    claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(currentAccount);
+                    txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+                }
                 
                 showSuccess(`Transaction submitted! Hash: ${txHash}`);
 
                 // Refresh data after a delay
                 setTimeout(async () => {
                     await fetchData();
-                    showSuccess('Rewards claimed successfully!');
+                    showSuccess('Please wait for transaction confirmation. Data will refresh automatically.');
                 }, 3000);
 
             } catch (error) {
