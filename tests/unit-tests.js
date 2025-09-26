@@ -102,6 +102,8 @@ test('contractService.js has proper RPC fallback', () => {
   assert(fileContains('contractService.js', 'fetch(CONFIG.GNOSIS_RPC_URL'), 'Should try RPC calls');
   assert(fileContains('contractService.js', '0x6f05b59d3b20000'), 'Should have correct mock withdrawable amount');
   assert(fileContains('contractService.js', '0x8e3f50b173c10000'), 'Should have correct mock GNO balance');
+  assert(fileContains('contractService.js', 'getValidatorCount'), 'Should have getValidatorCount function');
+  assert(fileContains('contractService.js', 'gnosis.beaconcha.in'), 'Should query Gnosis beacon chain API');
 });
 
 // Test 6: Wallet service exists and has required functions

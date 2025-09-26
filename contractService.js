@@ -144,3 +144,49 @@ export async function claimWithdrawal(contractAddress, account) {
         return await sendTransaction(contractAddress, claimData, account);
     }
 }
+
+/**
+ * Gets the number of validators for an address from Gnosis beacon chain API
+ * @param {string} address - Ethereum address
+ * @returns {Promise<number>} Number of validators
+ */
+export async function getValidatorCount(address) {
+    let totalValidators = 0;
+    let offset = 0;
+    const limit = 200;
+    
+    try {
+        while (true) {
+            const url = `https://gnosis.beaconcha.in/api/v1/validator/withdrawalCredentials/${address}?limit=${limit}&offset=${offset}`;
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Check if the response has the expected structure
+            if (!data || !Array.isArray(data.data)) {
+                break;
+            }
+            
+            const validators = data.data;
+            totalValidators += validators.length;
+            
+            // If we got fewer than the limit, we've reached the end
+            if (validators.length < limit) {
+                break;
+            }
+            
+            // Move to next batch
+            offset += limit;
+        }
+        
+        return totalValidators;
+    } catch (error) {
+        console.error('Error fetching validator count:', error);
+        // Return 0 on error to avoid breaking the UI
+        return 0;
+    }
+}
