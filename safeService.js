@@ -155,15 +155,37 @@ export async function sendSafeTransaction(transaction) {
 }
 
 /**
- * Makes a read-only call using window.ethereum or fallback to RPC
- * For Safe Apps, we can use the SDK's provider functionality or fallback
- * @param {Object} callData - Call data object
+ * Makes a read-only call using the Safe Apps SDK
+ * @param {Object} callData - Call data object with 'to' and 'data' properties
  * @returns {Promise<string>} Call result
  */
 export async function callContractViaSafe(callData) {
-    // For read calls, we can still use regular JSON-RPC even in Safe context
-    // The Safe Apps SDK is primarily for transactions
-    return null; // Let the caller handle with regular RPC
+    if (!safeAppsSDK) {
+        throw new Error('Safe App not initialized');
+    }
+    
+    try {
+        // Use Safe Apps SDK's eth.call method
+        const config = {
+            from: '0x0000000000000000000000000000000000000000',
+            to: callData.to,
+            data: callData.data
+        };
+        
+        const result = await safeAppsSDK.eth.call([config]);
+        
+        // The result should be a hex string
+        if (result && result !== '0x') {
+            return result;
+        }
+        
+        // If we get an empty result, return null to trigger fallback
+        return null;
+    } catch (error) {
+        console.warn('Safe Apps SDK call failed:', error);
+        // Return null to trigger fallback to public RPC
+        return null;
+    }
 }
 
 /**

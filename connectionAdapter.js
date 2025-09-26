@@ -162,10 +162,31 @@ export async function makeContractCall(contractAddress, data) {
     
     if (type === 'safe') {
         return await callContractViaSafe(callData);
+    } else if (type === 'wallet') {
+        // For wallet connections, use the wallet's RPC provider
+        if (typeof window.ethereum !== 'undefined') {
+            try {
+                const result = await window.ethereum.request({
+                    method: 'eth_call',
+                    params: [{
+                        to: contractAddress,
+                        data: data
+                    }, 'latest']
+                });
+                
+                // Check if result is valid (not null, undefined, or '0x')
+                if (result && result !== '0x') {
+                    return result;
+                }
+            } catch (error) {
+                console.warn('Wallet RPC call failed:', error);
+            }
+        }
+        // Return null to signal fallback to public RPC should be used
+        return null;
     } else {
-        // For wallet connections, we'll delegate to the existing contract service
-        // which handles both wallet and direct RPC calls
-        return null; // Signal to use existing fallback logic
+        // Unknown connection type, signal to use existing fallback logic
+        return null;
     }
 }
 
