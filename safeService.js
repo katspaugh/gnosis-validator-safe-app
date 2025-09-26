@@ -15,17 +15,7 @@ async function importSafeAppsSDK() {
             return window.SafeAppsSDK;
         }
         
-        // Try to import from Skypack CDN which resolves dependencies automatically
-        console.log('Attempting to import Safe Apps SDK from Skypack CDN...');
-        try {
-            const module = await import('https://cdn.skypack.dev/@safe-global/safe-apps-sdk@8.1.0');
-            console.log('Successfully imported Safe Apps SDK from Skypack CDN');
-            return module.default || module.SafeAppsSDK || module;
-        } catch (skypackError) {
-            console.warn('Skypack CDN failed:', skypackError);
-        }
-        
-        // Fallback: Try esm.sh which also handles dependency resolution
+        // Try to import from esm.sh which handles dependency resolution
         console.log('Attempting to import Safe Apps SDK from esm.sh...');
         try {
             const module = await import('https://esm.sh/@safe-global/safe-apps-sdk@8.1.0');

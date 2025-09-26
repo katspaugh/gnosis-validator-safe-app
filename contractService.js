@@ -26,7 +26,12 @@ export async function callContract(contractAddress, data) {
                     data: data
                 }, 'latest']
             });
-            return result;
+            
+            // Check if result is valid (not null, undefined, or '0x')
+            if (result && result !== '0x') {
+                return result;
+            }
+            // If wallet call returns invalid result, continue to RPC fallback
         }
         
         // Fall back to direct RPC call
