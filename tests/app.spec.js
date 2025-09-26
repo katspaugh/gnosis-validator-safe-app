@@ -98,6 +98,9 @@ test.describe('Gnosis Validator Safe App', () => {
     await expect(page.locator('text=Address: 0x1234567890123456789012345678901234567890')).toBeVisible();
     await expect(page.locator('text=0.500000 GNO')).toBeVisible(); // Validator rewards
     await expect(page.locator('text=10.250000 GNO')).toBeVisible(); // GNO balance
+    
+    // Check that validator count section is displayed (even if 0 due to API limitations in test)
+    await expect(page.locator('text=Validators Staked')).toBeVisible();
   });
 
   test('should be responsive and mobile-friendly', async ({ page }) => {

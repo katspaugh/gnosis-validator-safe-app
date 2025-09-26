@@ -2,7 +2,7 @@
 import { CONFIG } from './config.js';
 import { isWalletAvailable, isValidAddress, formatEther } from './utils.js';
 import { requestAccounts, getAccounts, switchToGnosisChain, setupWalletEventListeners } from './walletService.js';
-import { getWithdrawableAmount, getTokenBalance, claimWithdrawal } from './contractService.js';
+import { getWithdrawableAmount, getTokenBalance, claimWithdrawal, getValidatorCount } from './contractService.js';
 
 // Application state
 let appState = {
@@ -10,6 +10,7 @@ let appState = {
     isConnecting: false,
     withdrawableAmount: '0',
     gnoBalance: '0',
+    validatorCount: 0,
     isLoading: false,
     isClaiming: false,
     message: { type: '', text: '' },
@@ -17,6 +18,7 @@ let appState = {
     lookupAddress: '',
     lookupWithdrawableAmount: '0',
     lookupGnoBalance: '0',
+    lookupValidatorCount: 0,
     isLookupLoading: false
 };
 
@@ -102,13 +104,15 @@ async function fetchAddressData(address) {
     render();
     
     try {
-        const [withdrawableResult, gnoBalanceResult] = await Promise.all([
+        const [withdrawableResult, gnoBalanceResult, validatorCountResult] = await Promise.all([
             getWithdrawableAmount(CONFIG.VALIDATOR_CONTRACT_ADDRESS, address),
-            getTokenBalance(CONFIG.GNO_TOKEN_ADDRESS, address)
+            getTokenBalance(CONFIG.GNO_TOKEN_ADDRESS, address),
+            getValidatorCount(address)
         ]);
         
         appState.lookupWithdrawableAmount = formatEther(withdrawableResult);
         appState.lookupGnoBalance = formatEther(gnoBalanceResult);
+        appState.lookupValidatorCount = validatorCountResult;
         
     } catch (error) {
         showMessage('error', `Failed to fetch data for address: ${error.message}`);
@@ -126,13 +130,15 @@ async function fetchContractData() {
     render();
     
     try {
-        const [withdrawableResult, gnoBalanceResult] = await Promise.all([
+        const [withdrawableResult, gnoBalanceResult, validatorCountResult] = await Promise.all([
             getWithdrawableAmount(CONFIG.VALIDATOR_CONTRACT_ADDRESS, appState.account),
-            getTokenBalance(CONFIG.GNO_TOKEN_ADDRESS, appState.account)
+            getTokenBalance(CONFIG.GNO_TOKEN_ADDRESS, appState.account),
+            getValidatorCount(appState.account)
         ]);
         
         appState.withdrawableAmount = formatEther(withdrawableResult);
         appState.gnoBalance = formatEther(gnoBalanceResult);
+        appState.validatorCount = validatorCountResult;
         
     } catch (error) {
         showMessage('error', `Failed to fetch data: ${error.message}`);
@@ -225,6 +231,13 @@ function render() {
                 </div>
 
                 <div class="card">
+                    <div class="label">Validators Staked</div>
+                    <div class="balance ${appState.isLoading ? 'loading' : ''}">
+                        ${appState.isLoading ? 'Loading...' : `${appState.validatorCount} GNO`}
+                    </div>
+                </div>
+
+                <div class="card">
                     <button id="refresh-button" class="button" ${appState.isLoading ? 'disabled' : ''} style="background: #805ad5">
                         ${appState.isLoading ? 'Refreshing...' : 'Refresh Data'}
                     </button>
@@ -254,10 +267,10 @@ function render() {
                     ${appState.isLookupLoading ? 'Checking...' : 'Check Address'}
                 </button>
                 
-                ${appState.lookupAddress && (appState.lookupWithdrawableAmount !== '0' || appState.lookupGnoBalance !== '0') ? `
+                ${appState.lookupAddress && (appState.lookupWithdrawableAmount !== '0' || appState.lookupGnoBalance !== '0' || appState.lookupValidatorCount > 0) ? `
                     <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px;">
                         <div class="label">Address: ${appState.lookupAddress}</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
                             <div>
                                 <div class="label" style="font-size: 12px;">Validator Rewards</div>
                                 <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
@@ -268,6 +281,12 @@ function render() {
                                 <div class="label" style="font-size: 12px;">GNO Balance</div>
                                 <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
                                     ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupGnoBalance).toFixed(6)} GNO`}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="label" style="font-size: 12px;">Validators Staked</div>
+                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                    ${appState.isLookupLoading ? 'Loading...' : `${appState.lookupValidatorCount} GNO`}
                                 </div>
                             </div>
                         </div>
