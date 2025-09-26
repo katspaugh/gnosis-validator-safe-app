@@ -1,0 +1,114 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f7fa;
+}
+.container {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+.header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.header h1 {
+    color: #1a202c;
+    margin-bottom: 8px;
+}
+.header p {
+    color: #718096;
+}
+.card {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    background: #f8fafc;
+}
+.balance {
+    font-size: 32px;
+    font-weight: bold;
+    color: #2d3748;
+    margin: 16px 0;
+}
+.label {
+    font-size: 14px;
+    color: #718096;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.button {
+    background: #4299e1;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    width: 100%;
+    margin-top: 16px;
+}
+.button:hover:not(:disabled) {
+    background: #3182ce;
+}
+.button:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+}
+.connect-button {
+    background: #48bb78;
+}
+.connect-button:hover {
+    background: #38a169;
+}
+.address {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: #edf2f7;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    word-break: break-all;
+}
+.loading {
+    opacity: 0.7;
+}
+.error {
+    color: #e53e3e;
+    background: #fed7d7;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 16px 0;
+}
+.success {
+    color: #38a169;
+    background: #c6f6d5;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 16px 0;
+}
+.info {
+    color: #3182ce;
+    background: #e6f3ff;
+    padding: 12px;
+    border-radius: 6px;
+    margin: 16px 0;
+}
+.network-status {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #68d391;
+    color: white;
+    display: inline-block;
+    margin-top: 8px;
+}
+.hidden {
+    display: none;
+}
