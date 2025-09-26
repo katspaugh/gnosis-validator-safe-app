@@ -4,61 +4,25 @@ const GNO_TOKEN_ADDRESS = '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb';
 const GNOSIS_CHAIN_ID = '0x64'; // 100 in hex
 const GNOSIS_RPC_URL = 'https://rpc.gnosischain.com/';
 
-// State
-let currentAccount = null;
-let web3Provider = null;
-
-// DOM elements
-const connectSection = document.getElementById('connect-section');
-const walletSection = document.getElementById('wallet-section');
-const connectButton = document.getElementById('connect-button');
-const accountAddress = document.getElementById('account-address');
-const withdrawableAmount = document.getElementById('withdrawable-amount');
-const gnoBalance = document.getElementById('gno-balance');
-const claimButton = document.getElementById('claim-button');
-const refreshButton = document.getElementById('refresh-button');
-const errorMessage = document.getElementById('error-message');
-const successMessage = document.getElementById('success-message');
-const infoMessage = document.getElementById('info-message');
+// Known function selectors for common functions
+const FUNCTION_SELECTORS = {
+    'withdrawableAmount(address)': '0xf3fef3a3',
+    'balanceOf(address)': '0x70a08231',
+    'claimWithdrawal(address)': '0x4782f779',
+    'withdrawableAmount_alt': '0x1ac51b98',
+    'claimWithdrawal_alt': '0x5cc4aa9f'
+};
 
 // Utility functions
-function showError(message) {
-    errorMessage.textContent = message;
-    errorMessage.classList.remove('hidden');
-    successMessage.classList.add('hidden');
-    infoMessage.classList.add('hidden');
-}
-
-function showSuccess(message) {
-    successMessage.textContent = message;
-    successMessage.classList.remove('hidden');
-    errorMessage.classList.add('hidden');
-    infoMessage.classList.add('hidden');
-}
-
-function showInfo(message) {
-    infoMessage.textContent = message;
-    infoMessage.classList.remove('hidden');
-    errorMessage.classList.add('hidden');
-    successMessage.classList.add('hidden');
-}
-
-function hideMessages() {
-    errorMessage.classList.add('hidden');
-    successMessage.classList.add('hidden');
-    infoMessage.classList.add('hidden');
-}
-
 function formatEther(value) {
-    // Simple implementation to convert wei to ether
     return (parseInt(value, 16) / Math.pow(10, 18)).toFixed(6);
 }
 
-function toHex(value) {
-    return '0x' + parseInt(value).toString(16);
+function encodeAddress(address) {
+    return address.toLowerCase().replace('0x', '').padStart(64, '0');
 }
 
-// Contract interaction using raw JSON-RPC
+// Contract interaction functions
 async function callContract(contractAddress, data) {
     try {
         const result = await window.ethereum.request({
@@ -75,11 +39,11 @@ async function callContract(contractAddress, data) {
     }
 }
 
-async function sendTransaction(to, data) {
+async function sendTransaction(to, data, from) {
     try {
         const transactionParameters = {
             to: to,
-            from: currentAccount,
+            from: from,
             data: data,
         };
 
@@ -95,231 +59,280 @@ async function sendTransaction(to, data) {
     }
 }
 
-function encodeAddress(address) {
-    return address.toLowerCase().replace('0x', '').padStart(64, '0');
-}
+// React Components
+const { useState, useEffect, useCallback } = React;
 
-// Known function selectors for common functions
-// These are the keccak256 hashes of the function signatures
-const FUNCTION_SELECTORS = {
-    'withdrawableAmount(address)': '0xf3fef3a3', // May need verification with actual contract
-    'balanceOf(address)': '0x70a08231', // Standard ERC20
-    'claimWithdrawal(address)': '0x4782f779', // May need verification with actual contract
-    // Alternative approaches if the above don't work:
-    'withdrawableAmount_alt': '0x1ac51b98',
-    'claimWithdrawal_alt': '0x5cc4aa9f'
-};
+function App() {
+    const [account, setAccount] = useState(null);
+    const [isConnecting, setIsConnecting] = useState(false);
+    const [withdrawableAmount, setWithdrawableAmount] = useState('0');
+    const [gnoBalance, setGnoBalance] = useState('0');
+    const [isLoading, setIsLoading] = useState(false);
+    const [isClaiming, setIsClaiming] = useState(false);
+    const [message, setMessage] = useState({ type: '', text: '' });
 
-// Wallet connection
-async function connectWallet() {
-    if (!window.ethereum) {
-        showError('Please install MetaMask or another Ethereum wallet');
-        return;
-    }
-
-    try {
-        connectButton.textContent = 'Connecting...';
-        connectButton.disabled = true;
-        hideMessages();
-
-        // Request account access
-        const accounts = await window.ethereum.request({
-            method: 'eth_requestAccounts'
-        });
-
-        if (accounts.length === 0) {
-            throw new Error('No accounts found');
+    // Connect to wallet
+    const connectWallet = useCallback(async () => {
+        if (!window.ethereum) {
+            setMessage({ type: 'error', text: 'Please install MetaMask or another Ethereum wallet' });
+            return;
         }
 
-        currentAccount = accounts[0];
+        setIsConnecting(true);
+        setMessage({ type: '', text: '' });
 
-        // Switch to Gnosis Chain
         try {
-            await window.ethereum.request({
-                method: 'wallet_switchEthereumChain',
-                params: [{ chainId: GNOSIS_CHAIN_ID }],
+            // Request account access
+            const accounts = await window.ethereum.request({
+                method: 'eth_requestAccounts'
             });
-        } catch (switchError) {
-            // If chain doesn't exist, add it
-            if (switchError.code === 4902) {
-                await window.ethereum.request({
-                    method: 'wallet_addEthereumChain',
-                    params: [{
-                        chainId: GNOSIS_CHAIN_ID,
-                        chainName: 'Gnosis Chain',
-                        nativeCurrency: {
-                            name: 'xDAI',
-                            symbol: 'XDAI',
-                            decimals: 18
-                        },
-                        rpcUrls: [GNOSIS_RPC_URL],
-                        blockExplorerUrls: ['https://gnosisscan.io/']
-                    }]
-                });
-            } else {
-                throw switchError;
+
+            if (accounts.length === 0) {
+                throw new Error('No accounts found');
             }
-        }
 
-        // Update UI
-        connectSection.classList.add('hidden');
-        walletSection.classList.remove('hidden');
-        accountAddress.textContent = currentAccount;
+            setAccount(accounts[0]);
 
-        // Fetch initial data
-        await fetchData();
+            // Switch to Gnosis Chain
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: GNOSIS_CHAIN_ID }],
+                });
+            } catch (switchError) {
+                // If chain doesn't exist, add it
+                if (switchError.code === 4902) {
+                    await window.ethereum.request({
+                        method: 'wallet_addEthereumChain',
+                        params: [{
+                            chainId: GNOSIS_CHAIN_ID,
+                            chainName: 'Gnosis Chain',
+                            nativeCurrency: {
+                                name: 'xDAI',
+                                symbol: 'XDAI',
+                                decimals: 18
+                            },
+                            rpcUrls: [GNOSIS_RPC_URL],
+                            blockExplorerUrls: ['https://gnosisscan.io/']
+                        }]
+                    });
+                } else {
+                    throw switchError;
+                }
+            }
 
-    } catch (error) {
-        showError(`Failed to connect wallet: ${error.message}`);
-        connectButton.textContent = 'Connect Wallet';
-        connectButton.disabled = false;
-    }
-}
-
-// Fetch withdrawable amount and GNO balance
-async function fetchData() {
-    if (!currentAccount) return;
-
-    try {
-        withdrawableAmount.textContent = 'Loading...';
-        gnoBalance.textContent = 'Loading...';
-        withdrawableAmount.classList.add('loading');
-        gnoBalance.classList.add('loading');
-        refreshButton.disabled = true;
-        refreshButton.textContent = 'Refreshing...';
-
-        // Create function calls with correct function selectors
-        const withdrawableData = FUNCTION_SELECTORS['withdrawableAmount(address)'] + encodeAddress(currentAccount);
-        const balanceData = FUNCTION_SELECTORS['balanceOf(address)'] + encodeAddress(currentAccount);
-
-        // Make contract calls with error handling for each
-        let withdrawableResult, gnoBalanceResult;
-        
-        try {
-            withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, withdrawableData);
         } catch (error) {
-            console.warn('Primary withdrawableAmount call failed, trying alternative:', error);
-            // Try alternative function selector
-            const altWithdrawableData = FUNCTION_SELECTORS['withdrawableAmount_alt'] + encodeAddress(currentAccount);
-            withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, altWithdrawableData);
+            setMessage({ type: 'error', text: `Failed to connect wallet: ${error.message}` });
+        } finally {
+            setIsConnecting(false);
         }
+    }, []);
 
-        try {
-            gnoBalanceResult = await callContract(GNO_TOKEN_ADDRESS, balanceData);
-        } catch (error) {
-            console.error('GNO balance call failed:', error);
-            throw new Error('Failed to fetch GNO balance. Please check if you\'re on Gnosis Chain.');
-        }
+    // Fetch withdrawable amount and GNO balance
+    const fetchData = useCallback(async () => {
+        if (!account) return;
 
-        // Format and display results
-        const withdrawableEth = formatEther(withdrawableResult);
-        const gnoBalanceFormatted = formatEther(gnoBalanceResult);
-
-        withdrawableAmount.textContent = `${withdrawableEth} ETH`;
-        gnoBalance.textContent = `${gnoBalanceFormatted} GNO`;
-
-        // Enable claim button if there are rewards to claim
-        claimButton.disabled = parseFloat(withdrawableEth) === 0;
-
-        hideMessages(); // Clear any previous errors on success
-
-    } catch (error) {
-        showError(`Failed to fetch data: ${error.message}`);
-        withdrawableAmount.textContent = 'Error loading';
-        gnoBalance.textContent = 'Error loading';
-    } finally {
-        withdrawableAmount.classList.remove('loading');
-        gnoBalance.classList.remove('loading');
-        refreshButton.disabled = false;
-        refreshButton.textContent = 'Refresh Data';
-    }
-}
-
-// Claim rewards
-async function claimRewards() {
-    if (!currentAccount) return;
-
-    try {
-        claimButton.disabled = true;
-        claimButton.textContent = 'Claiming...';
-        hideMessages();
-
-        let claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(currentAccount);
-        let txHash;
+        setIsLoading(true);
+        setMessage({ type: '', text: '' });
 
         try {
-            txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+            // Create function calls with correct function selectors
+            const withdrawableData = FUNCTION_SELECTORS['withdrawableAmount(address)'] + encodeAddress(account);
+            const balanceData = FUNCTION_SELECTORS['balanceOf(address)'] + encodeAddress(account);
+
+            // Make contract calls with error handling for each
+            let withdrawableResult, gnoBalanceResult;
+            
+            try {
+                withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, withdrawableData);
+            } catch (error) {
+                console.warn('Primary withdrawableAmount call failed, trying alternative:', error);
+                // Try alternative function selector
+                const altWithdrawableData = FUNCTION_SELECTORS['withdrawableAmount_alt'] + encodeAddress(account);
+                withdrawableResult = await callContract(VALIDATOR_CONTRACT_ADDRESS, altWithdrawableData);
+            }
+
+            try {
+                gnoBalanceResult = await callContract(GNO_TOKEN_ADDRESS, balanceData);
+            } catch (error) {
+                console.error('GNO balance call failed:', error);
+                throw new Error('Failed to fetch GNO balance. Please check if you\'re on Gnosis Chain.');
+            }
+
+            // Format and display results
+            const withdrawableEth = formatEther(withdrawableResult);
+            const gnoBalanceFormatted = formatEther(gnoBalanceResult);
+
+            setWithdrawableAmount(withdrawableEth);
+            setGnoBalance(gnoBalanceFormatted);
+
         } catch (error) {
-            console.warn('Primary claimWithdrawal call failed, trying alternative:', error);
-            // Try alternative function selector
-            claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(currentAccount);
-            txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+            setMessage({ type: 'error', text: `Failed to fetch data: ${error.message}` });
+        } finally {
+            setIsLoading(false);
         }
-        
-        showSuccess(`Transaction submitted! Hash: ${txHash}`);
+    }, [account]);
 
-        // Refresh data after a delay
-        setTimeout(async () => {
-            await fetchData();
-            showSuccess('Please wait for transaction confirmation. Data will refresh automatically.');
-        }, 3000);
+    // Claim rewards
+    const claimRewards = useCallback(async () => {
+        if (!account) return;
 
-    } catch (error) {
-        showError(`Failed to claim rewards: ${error.message}`);
-    } finally {
-        claimButton.disabled = false;
-        claimButton.textContent = 'Claim Rewards';
-    }
-}
+        setIsClaiming(true);
+        setMessage({ type: '', text: '' });
 
-// Event listeners
-connectButton.addEventListener('click', connectWallet);
-claimButton.addEventListener('click', claimRewards);
-refreshButton.addEventListener('click', fetchData);
+        try {
+            let claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
+            let txHash;
 
-// Listen for account changes
-if (window.ethereum) {
-    window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) {
-            // Wallet disconnected
-            currentAccount = null;
-            connectSection.classList.remove('hidden');
-            walletSection.classList.add('hidden');
-            hideMessages();
-        } else {
-            // Account switched
-            currentAccount = accounts[0];
-            accountAddress.textContent = currentAccount;
+            try {
+                txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData, account);
+            } catch (error) {
+                console.warn('Primary claimWithdrawal call failed, trying alternative:', error);
+                // Try alternative function selector
+                claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
+                txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData, account);
+            }
+            
+            setMessage({ type: 'success', text: `Transaction submitted! Hash: ${txHash}` });
+
+            // Refresh data after a delay
+            setTimeout(async () => {
+                await fetchData();
+                setMessage({ type: 'success', text: 'Please wait for transaction confirmation. Data will refresh automatically.' });
+            }, 3000);
+
+        } catch (error) {
+            setMessage({ type: 'error', text: `Failed to claim rewards: ${error.message}` });
+        } finally {
+            setIsClaiming(false);
+        }
+    }, [account, fetchData]);
+
+    // Effect to fetch data when account changes
+    useEffect(() => {
+        if (account) {
             fetchData();
         }
-    });
+    }, [account, fetchData]);
 
-    window.ethereum.on('chainChanged', (chainId) => {
-        // Refresh the page when chain changes
-        window.location.reload();
-    });
-}
+    // Listen for account changes
+    useEffect(() => {
+        if (!window.ethereum) return;
 
-// Check if already connected on page load
-async function checkConnection() {
-    if (window.ethereum) {
-        try {
-            const accounts = await window.ethereum.request({
-                method: 'eth_accounts'
-            });
-            
-            if (accounts.length > 0) {
-                currentAccount = accounts[0];
-                connectSection.classList.add('hidden');
-                walletSection.classList.remove('hidden');
-                accountAddress.textContent = currentAccount;
-                await fetchData();
+        const handleAccountsChanged = (accounts) => {
+            if (accounts.length === 0) {
+                setAccount(null);
+                setWithdrawableAmount('0');
+                setGnoBalance('0');
+                setMessage({ type: '', text: '' });
+            } else {
+                setAccount(accounts[0]);
             }
-        } catch (error) {
-            console.error('Failed to check connection:', error);
-        }
-    }
+        };
+
+        const handleChainChanged = () => {
+            window.location.reload();
+        };
+
+        window.ethereum.on('accountsChanged', handleAccountsChanged);
+        window.ethereum.on('chainChanged', handleChainChanged);
+
+        return () => {
+            window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+            window.ethereum.removeListener('chainChanged', handleChainChanged);
+        };
+    }, []);
+
+    // Check if already connected on page load
+    useEffect(() => {
+        const checkConnection = async () => {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_accounts'
+                    });
+                    
+                    if (accounts.length > 0) {
+                        setAccount(accounts[0]);
+                    }
+                } catch (error) {
+                    console.error('Failed to check connection:', error);
+                }
+            }
+        };
+
+        checkConnection();
+    }, []);
+
+    return (
+        <div className="container">
+            <div className="header">
+                <h1>Gnosis Validator Safe App</h1>
+                <p>Manage your validator rewards on Gnosis Chain</p>
+            </div>
+
+            {!account ? (
+                <div className="card">
+                    <h2>Connect Your Wallet</h2>
+                    <p>Connect your wallet to view and claim your validator rewards.</p>
+                    <button 
+                        className="button connect-button" 
+                        onClick={connectWallet}
+                        disabled={isConnecting}
+                    >
+                        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                    </button>
+                </div>
+            ) : (
+                <>
+                    <div className="card">
+                        <div className="label">Connected Account</div>
+                        <div className="address">{account}</div>
+                        <div className="network-status">✅ Gnosis Chain</div>
+                    </div>
+
+                    <div className="card">
+                        <div className="label">Rewards to Date</div>
+                        <div className={`balance ${isLoading ? 'loading' : ''}`}>
+                            {isLoading ? 'Loading...' : `${parseFloat(withdrawableAmount).toFixed(6)} ETH`}
+                        </div>
+                        <button 
+                            className="button"
+                            onClick={claimRewards}
+                            disabled={isClaiming || isLoading || parseFloat(withdrawableAmount) === 0}
+                        >
+                            {isClaiming ? 'Claiming...' : 'Claim Rewards'}
+                        </button>
+                    </div>
+
+                    <div className="card">
+                        <div className="label">GNO Token Balance</div>
+                        <div className={`balance ${isLoading ? 'loading' : ''}`}>
+                            {isLoading ? 'Loading...' : `${parseFloat(gnoBalance).toFixed(6)} GNO`}
+                        </div>
+                    </div>
+
+                    <div className="card">
+                        <button 
+                            className="button" 
+                            onClick={fetchData}
+                            disabled={isLoading}
+                            style={{background: '#805ad5'}}
+                        >
+                            {isLoading ? 'Refreshing...' : 'Refresh Data'}
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {message.text && (
+                <div className={message.type}>
+                    {message.text}
+                </div>
+            )}
+        </div>
+    );
 }
 
-// Initialize app
-checkConnection();
+// Render the app
+ReactDOM.render(<App />, document.getElementById('root'));
