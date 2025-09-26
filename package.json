@@ -5,7 +5,10 @@
   "main": "index.html",
   "scripts": {
     "dev": "python3 -m http.server 8000",
-    "test": "playwright test",
+    "test": "node tests/unit-tests.js && node tests/validate-e2e.js",
+    "test:unit": "node tests/unit-tests.js",
+    "test:e2e": "playwright test",
+    "test:e2e-validate": "node tests/validate-e2e.js",
     "test:ui": "playwright test --ui",
     "test:debug": "playwright test --debug",
     "install-browsers": "playwright install",

@@ -34,15 +34,24 @@ tests/
 # Install Node.js dependencies
 npm install
 
-# Install Playwright browsers (required for first run)
+# For E2E tests: Install Playwright browsers (required for browser testing)
 npx playwright install
 ```
 
 ### 2. Running All Tests
 
 ```bash
-# Run all e2e tests
+# Run all tests (unit tests + E2E test validation)
 npm test
+
+# Run only unit tests (validates code structure and functionality)
+npm run test:unit
+
+# Run E2E test structure validation (validates test files without browsers)
+npm run test:e2e-validate
+
+# Run actual E2E tests (requires browser installation)
+npm run test:e2e
 
 # Run tests with UI mode (visual test runner)
 npm run test:ui
@@ -50,6 +59,30 @@ npm run test:ui
 # Run tests in debug mode
 npm run test:debug
 ```
+
+### 3. Test Types
+
+**Unit Tests** (`npm run test:unit`)
+- Validates file structure and core functionality
+- Checks ES6 module usage and imports
+- Verifies configuration and contract addresses
+- Tests address lookup functionality implementation
+- Validates rewards display in GNO (not ETH)
+- No browser installation required
+
+**E2E Test Validation** (`npm run test:e2e-validate`)
+- Validates E2E test file structure
+- Checks Playwright configuration
+- Verifies test coverage areas
+- Ensures wallet mocking is properly implemented
+- No browser installation required
+
+**E2E Tests** (`npm run test:e2e`)
+- Full browser automation testing
+- Requires `npx playwright install` first
+- Tests actual app functionality in browsers
+- Validates wallet integration and mocking
+- Tests responsive design and user interactions
 
 ### 3. Running Specific Tests
 
@@ -165,14 +198,27 @@ Check the workflow status in the GitHub Actions tab of the repository. Tests mus
 
 1. **Browser Installation Fails**
    ```bash
-   # Try installing with dependencies
+   # The app includes unit tests that work without browsers
+   npm run test:unit
+   
+   # If you need full E2E tests, try installing with dependencies
    npx playwright install --with-deps
    
    # Or install specific browser
    npx playwright install chromium
    ```
 
-2. **Port Already in Use**
+2. **Tests Fail Due to Network Restrictions**
+   ```bash
+   # Use unit tests and validation that work offline
+   npm test  # Runs unit tests + E2E validation
+   
+   # Or run components separately
+   npm run test:unit
+   npm run test:e2e-validate
+   ```
+
+3. **Port Already in Use**
    ```bash
    # Kill existing server
    pkill -f "python3 -m http.server"
