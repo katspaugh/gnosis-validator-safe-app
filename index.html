@@ -5,51 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gnosis Validator Safe App</title>
     <link rel="stylesheet" href="styles.css">
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
     <div id="root">
-        <!-- Fallback content in case React CDN doesn't load -->
+        <!-- Loading content -->
         <div class="container">
             <div class="header">
                 <h1>Gnosis Validator Safe App</h1>
                 <p>Manage your validator rewards on Gnosis Chain</p>
-                <p><em>Loading React app...</em></p>
+                <p><em>Loading app...</em></p>
             </div>
         </div>
     </div>
-    <script type="text/babel" src="app.js"></script>
-    
-    <!-- Fallback script if React doesn't load -->
-    <script>
-        // Check if React loaded, if not show a message
-        setTimeout(() => {
-            if (typeof React === 'undefined') {
-                document.getElementById('root').innerHTML = `
-                    <div class="container">
-                        <div class="header">
-                            <h1>Gnosis Validator Safe App</h1>
-                            <p>Manage your validator rewards on Gnosis Chain</p>
-                        </div>
-                        <div class="card">
-                            <h2>React App Structure</h2>
-                            <p>This app has been converted to use React instead of direct DOM calls:</p>
-                            <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
-                                <li>✅ Uses React hooks (useState, useEffect, useCallback)</li>
-                                <li>✅ State management with React instead of global variables</li>
-                                <li>✅ Component-based architecture</li>
-                                <li>✅ React event handlers (onClick) instead of addEventListener</li>
-                                <li>✅ Conditional rendering with JSX</li>
-                                <li>✅ React lifecycle methods for wallet connection checks</li>
-                            </ul>
-                            <p><strong>Note:</strong> React CDN may be blocked in this environment. In a normal browser environment, this would render as a full React application.</p>
-                        </div>
-                    </div>
-                `;
-            }
-        }, 2000);
-    </script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
