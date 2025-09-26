@@ -6,7 +6,7 @@ test.describe('Wallet Integration Tests', () => {
     await page.goto('/');
 
     // Initially should show connect wallet UI
-    await expect(page.locator('h2')).toHaveText('Connect Your Wallet');
+    await expect(page.locator('h2').first()).toHaveText('Connect Your Wallet');
     await expect(page.locator('#connect-button')).toBeVisible();
   });
 
