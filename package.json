@@ -1,0 +1,33 @@
+{
+  "name": "gnosis-validator-safe-app",
+  "version": "1.0.0",
+  "description": "A simple single-page application for managing Gnosis Chain validator rewards",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "test": "node tests/unit-tests.js && node tests/validate-e2e.js",
+    "test:unit": "node tests/unit-tests.js",
+    "test:e2e": "playwright test",
+    "test:e2e-validate": "node tests/validate-e2e.js",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "install-browsers": "playwright install",
+    "lint": "echo 'No linting configured'",
+    "build": "echo 'No build step needed - pure HTML/CSS/JS'"
+  },
+  "keywords": [
+    "gnosis",
+    "validator",
+    "ethereum",
+    "web3",
+    "dapp"
+  ],
+  "author": "katspaugh",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
