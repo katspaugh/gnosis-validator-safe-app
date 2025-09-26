@@ -121,6 +121,7 @@ test('utils.js has required utility functions', () => {
   assert(fileContains('utils.js', 'isValidAddress'), 'Should have address validation');
   assert(fileContains('utils.js', 'formatEther'), 'Should have ether formatting');
   assert(fileContains('utils.js', 'isWalletAvailable'), 'Should have wallet availability check');
+  assert(fileContains('utils.js', 'isInIframe'), 'Should have iframe detection for Safe App support');
 });
 
 // Test 8: Configuration is correct
