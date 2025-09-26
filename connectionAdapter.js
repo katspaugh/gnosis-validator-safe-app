@@ -17,14 +17,28 @@ import {
 } from './safeService.js';
 
 let connectionType = null; // 'wallet' or 'safe'
+let safeAppInitialized = false;
 
 /**
- * Determines the connection type based on context
- * @returns {string} 'safe' if in iframe, 'wallet' otherwise
+ * Determines the connection type based on context and SDK availability
+ * @returns {Promise<string>} 'safe' if in iframe and SDK available, 'wallet' otherwise
  */
-export function getConnectionType() {
+export async function getConnectionType() {
     if (connectionType === null) {
-        connectionType = isInIframe() ? 'safe' : 'wallet';
+        if (isInIframe()) {
+            // If in iframe, try to initialize Safe App
+            try {
+                await initSafeApp();
+                connectionType = 'safe';
+                safeAppInitialized = true;
+            } catch (error) {
+                console.warn('Failed to initialize Safe App, falling back to wallet mode:', error);
+                connectionType = 'wallet';
+                safeAppInitialized = false;
+            }
+        } else {
+            connectionType = 'wallet';
+        }
     }
     return connectionType;
 }
@@ -34,23 +48,19 @@ export function getConnectionType() {
  * @returns {Promise<void>}
  */
 export async function initConnection() {
-    const type = getConnectionType();
-    
-    if (type === 'safe') {
-        await initSafeApp();
-    }
-    // Wallet initialization is handled on-demand
+    // This will determine and cache the connection type
+    await getConnectionType();
 }
 
 /**
  * Checks if connection is available
- * @returns {boolean} True if connection method is available
+ * @returns {Promise<boolean>} True if connection method is available
  */
-export function isConnectionAvailable() {
-    const type = getConnectionType();
+export async function isConnectionAvailable() {
+    const type = await getConnectionType();
     
     if (type === 'safe') {
-        return true; // Safe Apps SDK should always be available in iframe
+        return safeAppInitialized;
     } else {
         return checkWalletAvailability();
     }
@@ -61,9 +71,12 @@ export function isConnectionAvailable() {
  * @returns {Promise<string[]>} Array of account addresses
  */
 export async function requestAccountAccess() {
-    const type = getConnectionType();
+    const type = await getConnectionType();
     
     if (type === 'safe') {
+        if (!safeAppInitialized) {
+            throw new Error('Safe App not properly initialized');
+        }
         const safeAddress = await getSafeAddress();
         return [safeAddress];
     } else {
@@ -72,14 +85,14 @@ export async function requestAccountAccess() {
 }
 
 /**
- * Gets currently connected accounts
+ * Gets currently connected accounts without requesting permission
  * @returns {Promise<string[]>} Array of account addresses
  */
 export async function getConnectedAccounts() {
-    const type = getConnectionType();
+    const type = await getConnectionType();
     
     if (type === 'safe') {
-        if (isSafeAppInitialized()) {
+        if (safeAppInitialized && isSafeAppInitialized()) {
             const safeAddress = await getSafeAddress();
             return [safeAddress];
         }
@@ -94,7 +107,7 @@ export async function getConnectedAccounts() {
  * @returns {Promise<void>}
  */
 export async function ensureGnosisChain() {
-    const type = getConnectionType();
+    const type = await getConnectionType();
     
     if (type === 'safe') {
         // For Safe Apps, verify we're on Gnosis Chain
@@ -113,8 +126,8 @@ export async function ensureGnosisChain() {
  * @param {Function} onChainChanged - Callback for chain changes
  * @returns {Function} Cleanup function
  */
-export function setupConnectionListeners(onAccountsChanged, onChainChanged) {
-    const type = getConnectionType();
+export async function setupConnectionListeners(onAccountsChanged, onChainChanged) {
+    const type = await getConnectionType();
     
     if (type === 'safe') {
         // Safe Apps don't have account/chain change events in the same way
@@ -132,7 +145,7 @@ export function setupConnectionListeners(onAccountsChanged, onChainChanged) {
  * @returns {Promise<string>} Call result
  */
 export async function makeContractCall(contractAddress, data) {
-    const type = getConnectionType();
+    const type = await getConnectionType();
     
     const callData = {
         to: contractAddress,
@@ -156,7 +169,7 @@ export async function makeContractCall(contractAddress, data) {
  * @returns {Promise<string>} Transaction hash
  */
 export async function sendTransaction(to, data, from) {
-    const type = getConnectionType();
+    const type = await getConnectionType();
     
     if (type === 'safe') {
         const transaction = {
@@ -173,10 +186,10 @@ export async function sendTransaction(to, data, from) {
 
 /**
  * Gets a human-readable connection status
- * @returns {string} Connection status description
+ * @returns {Promise<string>} Connection status description
  */
-export function getConnectionStatus() {
-    const type = getConnectionType();
+export async function getConnectionStatus() {
+    const type = await getConnectionType();
     
     if (type === 'safe') {
         return 'Safe App';

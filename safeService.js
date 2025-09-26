@@ -12,14 +12,41 @@ function isSafeAppsSDKAvailable() {
 }
 
 /**
+ * Waits for Safe Apps SDK to load with timeout
+ * @param {number} timeout - Timeout in milliseconds
+ * @returns {Promise<boolean>} True if SDK loaded successfully
+ */
+function waitForSafeAppsSDK(timeout = 5000) {
+    return new Promise((resolve) => {
+        if (isSafeAppsSDKAvailable()) {
+            resolve(true);
+            return;
+        }
+
+        const startTime = Date.now();
+        const checkInterval = setInterval(() => {
+            if (isSafeAppsSDKAvailable()) {
+                clearInterval(checkInterval);
+                resolve(true);
+            } else if (Date.now() - startTime > timeout) {
+                clearInterval(checkInterval);
+                resolve(false);
+            }
+        }, 100);
+    });
+}
+
+/**
  * Initializes the Safe Apps SDK
  * @returns {Promise<void>}
  */
 export async function initSafeApp() {
     if (safeAppsSDK) return;
     
-    if (!isSafeAppsSDKAvailable()) {
-        throw new Error('Safe Apps SDK not available. Make sure it is loaded.');
+    // Wait for SDK to load with timeout
+    const sdkLoaded = await waitForSafeAppsSDK();
+    if (!sdkLoaded) {
+        throw new Error('Safe Apps SDK failed to load. This may be due to network restrictions or the app not being loaded in a Safe context.');
     }
     
     try {
@@ -28,7 +55,10 @@ export async function initSafeApp() {
         console.log('Safe App initialized:', safeInfo);
     } catch (error) {
         console.error('Failed to initialize Safe App:', error);
-        throw error;
+        // Reset state on failure
+        safeAppsSDK = null;
+        safeInfo = null;
+        throw new Error('Failed to connect to Safe. Make sure this app is loaded within a Safe App context.');
     }
 }
 

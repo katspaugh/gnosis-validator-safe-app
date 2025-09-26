@@ -22,6 +22,7 @@ let appState = {
     isLoading: false,
     isClaiming: false,
     message: { type: '', text: '' },
+    connectionStatus: '', // Cache connection status
     // Address lookup functionality
     lookupAddress: '',
     lookupWithdrawableAmount: '0',
@@ -44,6 +45,9 @@ async function initApp() {
         // Initialize the connection (Safe App or wallet)
         await initConnection();
         
+        // Cache connection status
+        appState.connectionStatus = await getConnectionStatus();
+        
         // Check if already connected
         const accounts = await getConnectedAccounts();
         if (accounts.length > 0) {
@@ -55,12 +59,12 @@ async function initApp() {
     }
     
     render();
-    setupWalletListeners();
+    await setupWalletListeners();
 }
 
 // Set up wallet event listeners
-function setupWalletListeners() {
-    const cleanup = setupConnectionListeners(
+async function setupWalletListeners() {
+    const cleanup = await setupConnectionListeners(
         (accounts) => {
             if (accounts.length === 0) {
                 appState.account = null;
@@ -82,7 +86,8 @@ function setupWalletListeners() {
 
 // Connect wallet
 async function connectWallet() {
-    if (!isConnectionAvailable()) {
+    const connectionAvailable = await isConnectionAvailable();
+    if (!connectionAvailable) {
         showMessage('error', 'Connection method not available. Please install a Web3 wallet or ensure Safe App context.');
         return;
     }
@@ -96,11 +101,12 @@ async function connectWallet() {
         await ensureGnosisChain();
         await fetchContractData();
         
-        const connectionType = getConnectionStatus();
-        showMessage('success', `Connected successfully via ${connectionType}!`);
+        appState.connectionStatus = await getConnectionStatus();
+        showMessage('success', `Connected successfully via ${appState.connectionStatus}!`);
     } catch (error) {
         showMessage('error', `Failed to connect: ${error.message}`);
         appState.account = null;
+        appState.connectionStatus = '';
     } finally {
         appState.isConnecting = false;
         render();
@@ -224,7 +230,7 @@ function render() {
                 <div class="card">
                     <div class="label">Connected Account</div>
                     <div class="address">${appState.account}</div>
-                    <div class="network-status">✅ Gnosis Chain (${getConnectionStatus()})</div>
+                    <div class="network-status">✅ Gnosis Chain${appState.connectionStatus ? ` (${appState.connectionStatus})` : ''}</div>
                 </div>
 
                 <div class="card">
