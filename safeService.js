@@ -10,7 +10,7 @@ let safeInfo = null;
 async function importSafeAppsSDK() {
     try {
         // Try to import from CDN using ESM
-        const module = await import('https://unpkg.com/@safe-global/safe-apps-sdk@9.1.0/dist/index.js');
+        const module = await import('https://unpkg.com/@safe-global/safe-apps-sdk@9.1.0/dist/esm/index.js');
         return module.default || module.SafeAppsSDK || module;
     } catch (error) {
         console.warn('Failed to import Safe Apps SDK from CDN:', error);
