@@ -15,22 +15,37 @@ async function importSafeAppsSDK() {
             return window.SafeAppsSDK;
         }
         
-        // Try to import from CDN using ESM
-        console.log('Attempting to import Safe Apps SDK from CDN...');
-        const module = await import('https://unpkg.com/@safe-global/safe-apps-sdk@9.1.0/dist/esm/index.js');
-        console.log('Successfully imported Safe Apps SDK from CDN');
-        return module.default || module.SafeAppsSDK || module;
-    } catch (error) {
-        console.warn('Failed to import Safe Apps SDK from CDN:', error);
-        
-        // Final fallback: check if globally available (might be loaded by Safe)
-        if (typeof window !== 'undefined' && window.SafeAppsSDK) {
-            console.log('Using globally available Safe Apps SDK as fallback');
-            return window.SafeAppsSDK;
+        // Try to import from Skypack CDN which resolves dependencies automatically
+        console.log('Attempting to import Safe Apps SDK from Skypack CDN...');
+        try {
+            const module = await import('https://cdn.skypack.dev/@safe-global/safe-apps-sdk@8.1.0');
+            console.log('Successfully imported Safe Apps SDK from Skypack CDN');
+            return module.default || module.SafeAppsSDK || module;
+        } catch (skypackError) {
+            console.warn('Skypack CDN failed:', skypackError);
         }
         
-        throw new Error('Safe Apps SDK not available');
+        // Fallback: Try esm.sh which also handles dependency resolution
+        console.log('Attempting to import Safe Apps SDK from esm.sh...');
+        try {
+            const module = await import('https://esm.sh/@safe-global/safe-apps-sdk@8.1.0');
+            console.log('Successfully imported Safe Apps SDK from esm.sh');
+            return module.default || module.SafeAppsSDK || module;
+        } catch (esmShError) {
+            console.warn('esm.sh CDN failed:', esmShError);
+        }
+        
+    } catch (error) {
+        console.warn('Failed to import Safe Apps SDK from CDN:', error);
     }
+    
+    // Final fallback: check if globally available (might be loaded by Safe)
+    if (typeof window !== 'undefined' && window.SafeAppsSDK) {
+        console.log('Using globally available Safe Apps SDK as fallback');
+        return window.SafeAppsSDK;
+    }
+    
+    throw new Error('Safe Apps SDK not available. This app should be loaded within a Safe App context where the SDK is provided globally.');
 }
 
 /**
