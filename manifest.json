@@ -1,0 +1,9 @@
+{
+  "name": "Gnosis Validator Safe App",
+  "description": "Manage your validator rewards on Gnosis Chain",
+  "iconPath": "logo.svg",
+  "providedBy": {
+    "name": "Gnosis Validator Safe App",
+    "url": "https://github.com/katspaugh/gnosis-validator-safe-app"
+  }
+}

@@ -1,7 +1,15 @@
 // Main entry point for the Gnosis Validator Safe App
 import { CONFIG } from './config.js';
-import { isWalletAvailable, isValidAddress, formatEther } from './utils.js';
-import { requestAccounts, getAccounts, switchToGnosisChain, setupWalletEventListeners } from './walletService.js';
+import { isValidAddress, formatEther } from './utils.js';
+import { 
+    initConnection,
+    isConnectionAvailable,
+    requestAccountAccess,
+    getConnectedAccounts,
+    ensureGnosisChain,
+    setupConnectionListeners,
+    getConnectionStatus 
+} from './connectionAdapter.js';
 import { getWithdrawableAmount, getTokenBalance, claimWithdrawal, getValidatorCount } from './contractService.js';
 
 // Application state
@@ -32,15 +40,18 @@ let claimButton;
 async function initApp() {
     rootElement = document.getElementById('root');
     
-    // Check if already connected
     try {
-        const accounts = await getAccounts();
+        // Initialize the connection (Safe App or wallet)
+        await initConnection();
+        
+        // Check if already connected
+        const accounts = await getConnectedAccounts();
         if (accounts.length > 0) {
             appState.account = accounts[0];
             await fetchContractData();
         }
     } catch (error) {
-        console.warn('Failed to check existing connection:', error);
+        console.warn('Failed to initialize connection or check existing accounts:', error);
     }
     
     render();
@@ -49,9 +60,7 @@ async function initApp() {
 
 // Set up wallet event listeners
 function setupWalletListeners() {
-    if (!isWalletAvailable()) return;
-    
-    setupWalletEventListeners(
+    const cleanup = setupConnectionListeners(
         (accounts) => {
             if (accounts.length === 0) {
                 appState.account = null;
@@ -66,12 +75,15 @@ function setupWalletListeners() {
             window.location.reload();
         }
     );
+    
+    // Store cleanup function if needed
+    window.cleanupConnectionListeners = cleanup;
 }
 
 // Connect wallet
 async function connectWallet() {
-    if (!isWalletAvailable()) {
-        showMessage('error', 'MetaMask or compatible wallet not found. Please install a Web3 wallet.');
+    if (!isConnectionAvailable()) {
+        showMessage('error', 'Connection method not available. Please install a Web3 wallet or ensure Safe App context.');
         return;
     }
     
@@ -79,13 +91,15 @@ async function connectWallet() {
     render();
     
     try {
-        const accounts = await requestAccounts();
+        const accounts = await requestAccountAccess();
         appState.account = accounts[0];
-        await switchToGnosisChain();
+        await ensureGnosisChain();
         await fetchContractData();
-        showMessage('success', 'Wallet connected successfully!');
+        
+        const connectionType = getConnectionStatus();
+        showMessage('success', `Connected successfully via ${connectionType}!`);
     } catch (error) {
-        showMessage('error', `Failed to connect wallet: ${error.message}`);
+        showMessage('error', `Failed to connect: ${error.message}`);
         appState.account = null;
     } finally {
         appState.isConnecting = false;
@@ -210,7 +224,7 @@ function render() {
                 <div class="card">
                     <div class="label">Connected Account</div>
                     <div class="address">${appState.account}</div>
-                    <div class="network-status">✅ Gnosis Chain</div>
+                    <div class="network-status">✅ Gnosis Chain (${getConnectionStatus()})</div>
                 </div>
 
                 <div class="card">
