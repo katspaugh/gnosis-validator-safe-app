@@ -41,7 +41,8 @@ export function isValidAddress(address) {
  */
 export function isInIframe() {
     try {
-        return window.self !== window.top;
+        // Updated iframe detection logic as suggested
+        return typeof top !== 'undefined' && window !== top;
     } catch (e) {
         // If we can't access window.top due to cross-origin restrictions,
         // we're likely in an iframe
