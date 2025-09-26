@@ -19,7 +19,7 @@ export const CONFIG = {
 
 // Known function selectors for common functions
 export const FUNCTION_SELECTORS = {
-    'withdrawableAmount(address)': '0xf3fef3a3',
+    'withdrawableAmount(address)': '0xbe7ab51b',
     'balanceOf(address)': '0x70a08231',
     'claimWithdrawal(address)': '0xa3066aab'
 };
