@@ -21,7 +21,5 @@ export const CONFIG = {
 export const FUNCTION_SELECTORS = {
     'withdrawableAmount(address)': '0xf3fef3a3',
     'balanceOf(address)': '0x70a08231',
-    'claimWithdrawal(address)': '0x4782f779',
-    'withdrawableAmount_alt': '0x1ac51b98',
-    'claimWithdrawal_alt': '0x5cc4aa9f'
+    'claimWithdrawal(address)': '0xa3066aab'
 };
