@@ -6,7 +6,19 @@
  * @returns {string} Formatted ether value with 6 decimal places
  */
 export function formatEther(value) {
-    return (parseInt(value, 16) / Math.pow(10, 18)).toFixed(6);
+    // Handle invalid, empty, or null values
+    if (!value || value === '0x' || value === null || value === undefined) {
+        return '0.000000';
+    }
+    
+    const parsed = parseInt(value, 16);
+    
+    // Handle cases where parseInt returns NaN
+    if (isNaN(parsed)) {
+        return '0.000000';
+    }
+    
+    return (parsed / Math.pow(10, 18)).toFixed(6);
 }
 
 /**
