@@ -1,9 +1,8 @@
 // Main entry point for the Gnosis Validator Safe App
 import { CONFIG } from './config.js';
-import { isWalletAvailable } from './utils.js';
+import { isWalletAvailable, isValidAddress, formatEther } from './utils.js';
 import { requestAccounts, getAccounts, switchToGnosisChain, setupWalletEventListeners } from './walletService.js';
 import { getWithdrawableAmount, getTokenBalance, claimWithdrawal } from './contractService.js';
-import { formatEther } from './utils.js';
 
 // Application state
 let appState = {
@@ -13,7 +12,12 @@ let appState = {
     gnoBalance: '0',
     isLoading: false,
     isClaiming: false,
-    message: { type: '', text: '' }
+    message: { type: '', text: '' },
+    // Address lookup functionality
+    lookupAddress: '',
+    lookupWithdrawableAmount: '0',
+    lookupGnoBalance: '0',
+    isLookupLoading: false
 };
 
 // DOM elements
@@ -83,6 +87,33 @@ async function connectWallet() {
         appState.account = null;
     } finally {
         appState.isConnecting = false;
+        render();
+    }
+}
+
+// Fetch contract data for any address
+async function fetchAddressData(address) {
+    if (!address || !isValidAddress(address)) {
+        showMessage('error', 'Please enter a valid Ethereum address');
+        return;
+    }
+    
+    appState.isLookupLoading = true;
+    render();
+    
+    try {
+        const [withdrawableResult, gnoBalanceResult] = await Promise.all([
+            getWithdrawableAmount(CONFIG.VALIDATOR_CONTRACT_ADDRESS, address),
+            getTokenBalance(CONFIG.GNO_TOKEN_ADDRESS, address)
+        ]);
+        
+        appState.lookupWithdrawableAmount = formatEther(withdrawableResult);
+        appState.lookupGnoBalance = formatEther(gnoBalanceResult);
+        
+    } catch (error) {
+        showMessage('error', `Failed to fetch data for address: ${error.message}`);
+    } finally {
+        appState.isLookupLoading = false;
         render();
     }
 }
@@ -179,7 +210,7 @@ function render() {
                 <div class="card">
                     <div class="label">Rewards to Date</div>
                     <div class="balance ${appState.isLoading ? 'loading' : ''}">
-                        ${appState.isLoading ? 'Loading...' : `${parseFloat(appState.withdrawableAmount).toFixed(6)} ETH`}
+                        ${appState.isLoading ? 'Loading...' : `${parseFloat(appState.withdrawableAmount).toFixed(6)} GNO`}
                     </div>
                     <button id="claim-button" class="button" ${appState.isClaiming || appState.isLoading || !hasRewards ? 'disabled' : ''}>
                         ${appState.isClaiming ? 'Claiming...' : 'Claim Rewards'}
@@ -200,6 +231,50 @@ function render() {
                 </div>
             `}
 
+            <!-- Address Lookup Section -->
+            <div class="card">
+                <h2>Check Any Address</h2>
+                <p>Enter any Ethereum address to check its validator rewards and GNO balance.</p>
+                <div style="margin-bottom: 16px;">
+                    <input 
+                        type="text" 
+                        id="address-input" 
+                        placeholder="0x..." 
+                        value="${appState.lookupAddress}"
+                        style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: 'Monaco', 'Menlo', monospace; font-size: 14px;"
+                        ${appState.isLookupLoading ? 'disabled' : ''}
+                    />
+                </div>
+                <button 
+                    id="lookup-button" 
+                    class="button" 
+                    ${appState.isLookupLoading || !appState.lookupAddress ? 'disabled' : ''}
+                    style="background: #48bb78; margin-bottom: 16px;"
+                >
+                    ${appState.isLookupLoading ? 'Checking...' : 'Check Address'}
+                </button>
+                
+                ${appState.lookupAddress && (appState.lookupWithdrawableAmount !== '0' || appState.lookupGnoBalance !== '0') ? `
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px;">
+                        <div class="label">Address: ${appState.lookupAddress}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+                            <div>
+                                <div class="label" style="font-size: 12px;">Validator Rewards</div>
+                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                    ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupWithdrawableAmount).toFixed(6)} GNO`}
+                                </div>
+                            </div>
+                            <div>
+                                <div class="label" style="font-size: 12px;">GNO Balance</div>
+                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                    ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupGnoBalance).toFixed(6)} GNO`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+
             ${appState.message.text ? `
                 <div class="${appState.message.type}">
                     ${appState.message.text}
@@ -217,6 +292,8 @@ function setupEventListeners() {
     connectButton = document.getElementById('connect-button');
     refreshButton = document.getElementById('refresh-button');
     claimButton = document.getElementById('claim-button');
+    const addressInput = document.getElementById('address-input');
+    const lookupButton = document.getElementById('lookup-button');
     
     if (connectButton) {
         connectButton.addEventListener('click', connectWallet);
@@ -228,6 +305,28 @@ function setupEventListeners() {
     
     if (claimButton) {
         claimButton.addEventListener('click', claimRewards);
+    }
+    
+    if (addressInput) {
+        addressInput.addEventListener('input', (e) => {
+            appState.lookupAddress = e.target.value.trim();
+            render();
+        });
+        
+        // Allow Enter key to trigger lookup
+        addressInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && appState.lookupAddress && !appState.isLookupLoading) {
+                fetchAddressData(appState.lookupAddress);
+            }
+        });
+    }
+    
+    if (lookupButton) {
+        lookupButton.addEventListener('click', () => {
+            if (appState.lookupAddress && !appState.isLookupLoading) {
+                fetchAddressData(appState.lookupAddress);
+            }
+        });
     }
 }
 

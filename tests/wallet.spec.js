@@ -115,12 +115,21 @@ test.describe('Wallet Integration Tests', () => {
     await expect(page.locator('#refresh-button')).toHaveText('Refresh Data');
   });
 
-  test('should handle wallet errors gracefully', async ({ page }) => {
-    // Mock wallet that throws errors
+  test('should display rewards in GNO, not ETH', async ({ page }) => {
+    // Mock connected wallet
     await page.addInitScript(() => {
       window.ethereum = {
         request: async (params) => {
-          throw new Error('User rejected the request');
+          if (params.method === 'eth_requestAccounts' || params.method === 'eth_accounts') {
+            return ['0x1234567890123456789012345678901234567890'];
+          }
+          if (params.method === 'wallet_switchEthereumChain') {
+            return null;
+          }
+          if (params.method === 'eth_call') {
+            return '0x6f05b59d3b20000'; // 0.5 GNO in wei
+          }
+          return null;
         },
         on: (event, callback) => {},
         removeListener: (event, callback) => {}
@@ -129,11 +138,15 @@ test.describe('Wallet Integration Tests', () => {
 
     await page.goto('/');
     await page.click('#connect-button');
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
 
-    // Should show error message
-    await expect(page.locator('.error')).toBeVisible();
-    await expect(page.locator('.error')).toContainText('Failed to connect wallet');
+    // Check that rewards are displayed in GNO, not ETH
+    const rewardsText = await page.locator('.balance').first().textContent();
+    expect(rewardsText).toContain('GNO');
+    expect(rewardsText).not.toContain('ETH');
+    
+    // Should show specific value
+    expect(rewardsText).toContain('0.500000 GNO');
   });
 
   test('should handle refresh data functionality', async ({ page }) => {

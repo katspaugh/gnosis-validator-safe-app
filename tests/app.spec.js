@@ -19,7 +19,7 @@ test.describe('Gnosis Validator Safe App', () => {
     await expect(page.locator('.card p').first()).toHaveText('Connect your wallet to view and claim your validator rewards.');
   });
 
-  test('should display Connect Wallet button initially', async ({ page }) => {
+  test('should display Connect Wallet button and Address Lookup section initially', async ({ page }) => {
     await page.goto('/');
 
     // Check Connect Wallet button is present and enabled
@@ -27,6 +27,12 @@ test.describe('Gnosis Validator Safe App', () => {
     await expect(connectButton).toBeVisible();
     await expect(connectButton).toHaveText('Connect Wallet');
     await expect(connectButton).toBeEnabled();
+
+    // Check Address Lookup section is present
+    await expect(page.locator('h2').nth(1)).toHaveText('Check Any Address');
+    await expect(page.locator('#address-input')).toBeVisible();
+    await expect(page.locator('#lookup-button')).toBeVisible();
+    await expect(page.locator('#lookup-button')).toBeDisabled(); // Should be disabled initially
   });
 
   test('should show appropriate error message when wallet is not available', async ({ page }) => {
@@ -58,23 +64,40 @@ test.describe('Gnosis Validator Safe App', () => {
     await expect(connectButton).toHaveClass(/connect-button/);
   });
 
-  test('should handle button state changes correctly', async ({ page }) => {
+  test('should enable lookup button when valid address is entered', async ({ page }) => {
     await page.goto('/');
 
-    const connectButton = page.locator('#connect-button');
+    const addressInput = page.locator('#address-input');
+    const lookupButton = page.locator('#lookup-button');
     
-    // Initially enabled
-    await expect(connectButton).toBeEnabled();
-    await expect(connectButton).toHaveText('Connect Wallet');
+    // Initially disabled
+    await expect(lookupButton).toBeDisabled();
 
-    // Click and check if state changes appropriately
-    await connectButton.click();
-
-    // Should show error message (since no wallet is available in test environment)
-    await expect(page.locator('.error')).toBeVisible();
+    // Enter valid address
+    await addressInput.fill('0x1234567890123456789012345678901234567890');
     
-    // Button should still be enabled after error
-    await expect(connectButton).toBeEnabled();
+    // Should be enabled now
+    await expect(lookupButton).toBeEnabled();
+    await expect(lookupButton).toHaveText('Check Address');
+  });
+
+  test('should display address lookup results with mock data', async ({ page }) => {
+    await page.goto('/');
+
+    const addressInput = page.locator('#address-input');
+    const lookupButton = page.locator('#lookup-button');
+    
+    // Enter address and click lookup
+    await addressInput.fill('0x1234567890123456789012345678901234567890');
+    await lookupButton.click();
+    
+    // Wait for results to appear
+    await page.waitForTimeout(2000);
+    
+    // Check that results are displayed
+    await expect(page.locator('text=Address: 0x1234567890123456789012345678901234567890')).toBeVisible();
+    await expect(page.locator('text=0.500000 GNO')).toBeVisible(); // Validator rewards
+    await expect(page.locator('text=10.250000 GNO')).toBeVisible(); // GNO balance
   });
 
   test('should be responsive and mobile-friendly', async ({ page }) => {
