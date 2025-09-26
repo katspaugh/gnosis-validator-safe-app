@@ -152,32 +152,23 @@ export async function getTokenBalance(tokenAddress, account) {
  * @returns {Promise<string>} Transaction hash
  */
 export async function claimWithdrawal(contractAddress, account) {
-    // Try parameterless claim functions first (most common for validator contracts)
-    const parameterlessMethods = [
-        'claim()',
-        'claimRewards()', 
-        'claimWithdrawal()'
-    ];
-    
-    for (const method of parameterlessMethods) {
-        try {
-            const claimData = FUNCTION_SELECTORS[method];
-            return await sendTransaction(contractAddress, claimData, account);
-        } catch (error) {
-            console.warn(`${method} call failed:`, error);
-            // Continue to next method
-        }
-    }
-    
-    // Fallback to original methods with address parameter
+    // Try the correct parameterless claimWithdrawal function first
     try {
-        const claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
+        const claimData = FUNCTION_SELECTORS['claimWithdrawal()'];
         return await sendTransaction(contractAddress, claimData, account);
     } catch (error) {
-        console.warn('claimWithdrawal(address) call failed, trying alternative:', error);
-        // Try alternative function selector
-        const claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
-        return await sendTransaction(contractAddress, claimData, account);
+        console.warn('claimWithdrawal() call failed, trying with address parameter:', error);
+        
+        // Fallback to original methods with address parameter
+        try {
+            const claimData = FUNCTION_SELECTORS['claimWithdrawal(address)'] + encodeAddress(account);
+            return await sendTransaction(contractAddress, claimData, account);
+        } catch (error) {
+            console.warn('claimWithdrawal(address) call failed, trying alternative:', error);
+            // Try alternative function selector
+            const claimData = FUNCTION_SELECTORS['claimWithdrawal_alt'] + encodeAddress(account);
+            return await sendTransaction(contractAddress, claimData, account);
+        }
     }
 }
 

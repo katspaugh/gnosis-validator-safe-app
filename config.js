@@ -24,8 +24,6 @@ export const FUNCTION_SELECTORS = {
     'claimWithdrawal(address)': '0x4782f779',
     'withdrawableAmount_alt': '0x1ac51b98',
     'claimWithdrawal_alt': '0x5cc4aa9f',
-    // Parameterless claim functions (common for validator contracts)
-    'claim()': '0x4e71d92d',
-    'claimRewards()': '0x372500ab',
-    'claimWithdrawal()': '0x3c565817'
+    // Correct claimWithdrawal function selector as provided by maintainer
+    'claimWithdrawal()': '0xa3066aab'
 };
