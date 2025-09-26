@@ -43,7 +43,7 @@ test.describe('Gnosis Validator Safe App', () => {
 
     // Check error message appears
     await expect(page.locator('.error')).toBeVisible();
-    await expect(page.locator('.error')).toHaveText('MetaMask or compatible wallet not found. Please install a Web3 wallet.');
+    await expect(page.locator('.error')).toHaveText('Connection method not available. Please install a Web3 wallet or ensure Safe App context.');
   });
 
   test('should have proper CSS classes and styling', async ({ page }) => {
