@@ -9,14 +9,23 @@ let safeInfo = null;
  */
 async function importSafeAppsSDK() {
     try {
+        // First, check if it's already available globally (common in Safe environment)
+        if (typeof window !== 'undefined' && window.SafeAppsSDK) {
+            console.log('Using globally available Safe Apps SDK');
+            return window.SafeAppsSDK;
+        }
+        
         // Try to import from CDN using ESM
+        console.log('Attempting to import Safe Apps SDK from CDN...');
         const module = await import('https://unpkg.com/@safe-global/safe-apps-sdk@9.1.0/dist/esm/index.js');
+        console.log('Successfully imported Safe Apps SDK from CDN');
         return module.default || module.SafeAppsSDK || module;
     } catch (error) {
         console.warn('Failed to import Safe Apps SDK from CDN:', error);
         
-        // Fallback: check if globally available (for environments that load it differently)
+        // Final fallback: check if globally available (might be loaded by Safe)
         if (typeof window !== 'undefined' && window.SafeAppsSDK) {
+            console.log('Using globally available Safe Apps SDK as fallback');
             return window.SafeAppsSDK;
         }
         
@@ -38,27 +47,35 @@ async function isSafeAppsSDKAvailable() {
 }
 
 /**
- * Waits for Safe Apps SDK to be available with timeout
+ * Waits for Safe Apps SDK to be available with timeout and retries
  * @param {number} timeout - Timeout in milliseconds
  * @returns {Promise<boolean>} True if SDK became available
  */
-function waitForSafeAppsSDK(timeout = 5000) {
+function waitForSafeAppsSDK(timeout = 10000) {
     return new Promise(async (resolve) => {
+        // First quick check
         if (await isSafeAppsSDKAvailable()) {
             resolve(true);
             return;
         }
 
         const startTime = Date.now();
+        let attempts = 0;
+        const maxAttempts = Math.floor(timeout / 500); // Check every 500ms
+        
         const checkInterval = setInterval(async () => {
+            attempts++;
+            
             if (await isSafeAppsSDKAvailable()) {
                 clearInterval(checkInterval);
+                console.log(`Safe Apps SDK became available after ${attempts} attempts`);
                 resolve(true);
             } else if (Date.now() - startTime > timeout) {
                 clearInterval(checkInterval);
+                console.warn(`Safe Apps SDK not available after ${timeout}ms timeout`);
                 resolve(false);
             }
-        }, 100);
+        }, 500);
     });
 }
 

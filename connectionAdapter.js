@@ -25,21 +25,29 @@ let safeAppInitialized = false;
  */
 export async function getConnectionType() {
     if (connectionType === null) {
-        if (isInIframe()) {
+        const inIframe = isInIframe();
+        console.log('Connection type detection:', { inIframe });
+        
+        if (inIframe) {
+            console.log('Detected iframe context, attempting Safe App initialization...');
             // If in iframe, try to initialize Safe App
             try {
                 await initSafeApp();
                 connectionType = 'safe';
                 safeAppInitialized = true;
+                console.log('✅ Safe App initialization successful - using Safe mode');
             } catch (error) {
-                console.warn('Failed to initialize Safe App, falling back to wallet mode:', error);
+                console.warn('❌ Safe App initialization failed, falling back to wallet mode:', error);
                 connectionType = 'wallet';
                 safeAppInitialized = false;
             }
         } else {
+            console.log('Not in iframe context - using wallet mode');
             connectionType = 'wallet';
         }
     }
+    
+    console.log('Final connection type:', connectionType);
     return connectionType;
 }
 
