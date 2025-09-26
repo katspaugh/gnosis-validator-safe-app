@@ -24,6 +24,10 @@
   ],
   "author": "katspaugh",
   "license": "MIT",
+  "dependencies": {
+    "@safe-global/safe-apps-sdk": "^8.1.0",
+    "@safe-global/safe-apps-provider": "^0.18.1"
+  },
   "devDependencies": {
     "@playwright/test": "^1.40.0"
   },

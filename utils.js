@@ -34,3 +34,18 @@ export function isWalletAvailable() {
 export function isValidAddress(address) {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
+
+/**
+ * Detects if the app is running inside an iframe (Safe App context)
+ * @returns {boolean} True if running in iframe
+ */
+export function isInIframe() {
+    try {
+        // Updated iframe detection logic as suggested
+        return typeof top !== 'undefined' && window !== top;
+    } catch (e) {
+        // If we can't access window.top due to cross-origin restrictions,
+        // we're likely in an iframe
+        return true;
+    }
+}

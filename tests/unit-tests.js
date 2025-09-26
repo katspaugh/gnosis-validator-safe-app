@@ -82,7 +82,10 @@ test('index.html has correct structure', () => {
   assert(fileContains('index.html', '<title>Gnosis Validator Safe App</title>'), 'Should have correct title');
   assert(fileContains('index.html', '<div id="root">'), 'Should have root div');
   assert(fileContains('index.html', 'type="module"'), 'Should load app.js as module');
-  assert(!fileContains('index.html', 'unpkg.com'), 'Should not depend on external CDNs');
+  // Allow Safe Apps SDK for hybrid functionality
+  const hasUnpkg = fileContains('index.html', 'unpkg.com');
+  const hasSafeAppsSDK = fileContains('index.html', 'safe-apps-sdk');
+  assert(!hasUnpkg || hasSafeAppsSDK, 'Should not depend on external CDNs except for Safe Apps SDK');
 });
 
 // Test 4: App.js uses ES6 modules correctly
@@ -118,6 +121,7 @@ test('utils.js has required utility functions', () => {
   assert(fileContains('utils.js', 'isValidAddress'), 'Should have address validation');
   assert(fileContains('utils.js', 'formatEther'), 'Should have ether formatting');
   assert(fileContains('utils.js', 'isWalletAvailable'), 'Should have wallet availability check');
+  assert(fileContains('utils.js', 'isInIframe'), 'Should have iframe detection for Safe App support');
 });
 
 // Test 8: Configuration is correct

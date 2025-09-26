@@ -1,6 +1,7 @@
 // Contract interaction service for Ethereum/Gnosis Chain
 import { CONFIG, FUNCTION_SELECTORS } from './config.js';
 import { encodeAddress } from './utils.js';
+import { makeContractCall, sendTransaction as sendAdapterTransaction } from './connectionAdapter.js';
 
 /**
  * Makes a read-only contract call using eth_call
@@ -10,7 +11,13 @@ import { encodeAddress } from './utils.js';
  */
 export async function callContract(contractAddress, data) {
     try {
-        // First try using wallet if available
+        // Try using the connection adapter first
+        const adapterResult = await makeContractCall(contractAddress, data);
+        if (adapterResult !== null) {
+            return adapterResult;
+        }
+        
+        // Fall back to existing logic for wallet connections
         if (typeof window.ethereum !== 'undefined') {
             const result = await window.ethereum.request({
                 method: 'eth_call',
@@ -78,6 +85,13 @@ export async function callContract(contractAddress, data) {
  */
 export async function sendTransaction(to, data, from) {
     try {
+        // Try using the connection adapter first
+        const adapterResult = await sendAdapterTransaction(to, data, from);
+        if (adapterResult !== null) {
+            return adapterResult;
+        }
+        
+        // Fall back to wallet transaction for regular wallet connections
         const transactionParameters = {
             to: to,
             from: from,

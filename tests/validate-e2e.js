@@ -68,6 +68,15 @@ validateFile('basic.spec.js', [
   { text: 'toHaveTitle', description: 'Validates page title' }
 ]);
 
+// Validate safe-app.spec.js
+validateFile('safe-app.spec.js', [
+  { text: 'test.describe', description: 'Uses Playwright test structure' },
+  { text: 'iframe context', description: 'Tests iframe detection' },
+  { text: 'Safe App', description: 'Tests Safe App functionality' },
+  { text: 'manifest.json', description: 'Tests Safe App manifest' },
+  { text: 'connection status', description: 'Tests connection type display' }
+]);
+
 // Check playwright config
 const configPath = path.join(__dirname, '..', 'playwright.config.js');
 if (fs.existsSync(configPath)) {
