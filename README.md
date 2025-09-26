@@ -1,0 +1,2 @@
+Gnosis validator Safe app
+=========================
