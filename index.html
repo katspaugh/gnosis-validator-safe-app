@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gnosis Validator Safe App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #718096;
+        }
+        .card {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            background: #f8fafc;
+        }
+        .balance {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2d3748;
+            margin: 16px 0;
+        }
+        .label {
+            font-size: 14px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-top: 16px;
+        }
+        .button:hover:not(:disabled) {
+            background: #3182ce;
+        }
+        .button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        .connect-button {
+            background: #48bb78;
+        }
+        .connect-button:hover {
+            background: #38a169;
+        }
+        .address {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #edf2f7;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+        .loading {
+            opacity: 0.7;
+        }
+        .error {
+            color: #e53e3e;
+            background: #fed7d7;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .success {
+            color: #38a169;
+            background: #c6f6d5;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 16px 0;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Gnosis Validator Safe App</h1>
+            <p>Manage your validator rewards on Gnosis Chain</p>
+        </div>
+
+        <!-- Wallet Connection Section -->
+        <div id="connect-section" class="card">
+            <h2>Connect Your Wallet</h2>
+            <p>Connect your wallet to view and claim your validator rewards.</p>
+            <button id="connect-button" class="button connect-button">
+                Connect Wallet
+            </button>
+        </div>
+
+        <!-- Connected Wallet Section -->
+        <div id="wallet-section" class="hidden">
+            <div class="card">
+                <div class="label">Connected Account</div>
+                <div id="account-address" class="address"></div>
+            </div>
+
+            <div class="card">
+                <div class="label">Rewards to Date</div>
+                <div id="withdrawable-amount" class="balance">Loading...</div>
+                <button id="claim-button" class="button" disabled>
+                    Claim Rewards
+                </button>
+            </div>
+
+            <div class="card">
+                <div class="label">GNO Token Balance</div>
+                <div id="gno-balance" class="balance">Loading...</div>
+            </div>
+
+            <div class="card">
+                <button id="refresh-button" class="button" style="background: #805ad5">
+                    Refresh Data
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div id="error-message" class="error hidden"></div>
+        <div id="success-message" class="success hidden"></div>
+    </div>
+
+    <script>
+    <script>
+        // Configuration
+        const VALIDATOR_CONTRACT_ADDRESS = '0x0b98057ea310f4d31f2a452b414647007d1645d9';
+        const GNO_TOKEN_ADDRESS = '0x9C58BAcC331c9aa871AFD802DB6379a98e80CEdb';
+        const GNOSIS_CHAIN_ID = '0x64'; // 100 in hex
+        const GNOSIS_RPC_URL = 'https://rpc.gnosischain.com/';
+
+        // State
+        let currentAccount = null;
+        let web3Provider = null;
+
+        // DOM elements
+        const connectSection = document.getElementById('connect-section');
+        const walletSection = document.getElementById('wallet-section');
+        const connectButton = document.getElementById('connect-button');
+        const accountAddress = document.getElementById('account-address');
+        const withdrawableAmount = document.getElementById('withdrawable-amount');
+        const gnoBalance = document.getElementById('gno-balance');
+        const claimButton = document.getElementById('claim-button');
+        const refreshButton = document.getElementById('refresh-button');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+
+        // Utility functions
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+        }
+
+        function hideMessages() {
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+        }
+
+        function formatEther(value) {
+            // Simple implementation to convert wei to ether
+            return (parseInt(value, 16) / Math.pow(10, 18)).toFixed(6);
+        }
+
+        function toHex(value) {
+            return '0x' + parseInt(value).toString(16);
+        }
+
+        // Contract interaction using raw JSON-RPC
+        async function callContract(contractAddress, data) {
+            try {
+                const result = await window.ethereum.request({
+                    method: 'eth_call',
+                    params: [{
+                        to: contractAddress,
+                        data: data
+                    }, 'latest']
+                });
+                return result;
+            } catch (error) {
+                console.error('Contract call error:', error);
+                throw error;
+            }
+        }
+
+        async function sendTransaction(to, data) {
+            try {
+                const transactionParameters = {
+                    to: to,
+                    from: currentAccount,
+                    data: data,
+                };
+
+                const txHash = await window.ethereum.request({
+                    method: 'eth_sendTransaction',
+                    params: [transactionParameters],
+                });
+
+                return txHash;
+            } catch (error) {
+                console.error('Transaction error:', error);
+                throw error;
+            }
+        }
+
+        // Create function selectors and encode parameters
+        function createFunctionSelector(signature) {
+            // Simple implementation - in real app would use proper encoding
+            const hash = signature.split('(')[0];
+            // This is a simplified version - real implementation would use keccak256
+            return '0x' + hash.substring(0, 8).padEnd(8, '0');
+        }
+
+        function encodeAddress(address) {
+            return address.toLowerCase().replace('0x', '').padStart(64, '0');
+        }
+
+        // Wallet connection
+        async function connectWallet() {
+            if (!window.ethereum) {
+                showError('Please install MetaMask or another Ethereum wallet');
+                return;
+            }
+
+            try {
+                connectButton.textContent = 'Connecting...';
+                connectButton.disabled = true;
+                hideMessages();
+
+                // Request account access
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found');
+                }
+
+                currentAccount = accounts[0];
+
+                // Switch to Gnosis Chain
+                try {
+                    await window.ethereum.request({
+                        method: 'wallet_switchEthereumChain',
+                        params: [{ chainId: GNOSIS_CHAIN_ID }],
+                    });
+                } catch (switchError) {
+                    // If chain doesn't exist, add it
+                    if (switchError.code === 4902) {
+                        await window.ethereum.request({
+                            method: 'wallet_addEthereumChain',
+                            params: [{
+                                chainId: GNOSIS_CHAIN_ID,
+                                chainName: 'Gnosis Chain',
+                                nativeCurrency: {
+                                    name: 'xDAI',
+                                    symbol: 'XDAI',
+                                    decimals: 18
+                                },
+                                rpcUrls: [GNOSIS_RPC_URL],
+                                blockExplorerUrls: ['https://gnosisscan.io/']
+                            }]
+                        });
+                    } else {
+                        throw switchError;
+                    }
+                }
+
+                // Update UI
+                connectSection.classList.add('hidden');
+                walletSection.classList.remove('hidden');
+                accountAddress.textContent = currentAccount;
+
+                // Fetch initial data
+                await fetchData();
+
+            } catch (error) {
+                showError(`Failed to connect wallet: ${error.message}`);
+                connectButton.textContent = 'Connect Wallet';
+                connectButton.disabled = false;
+            }
+        }
+
+        // Fetch withdrawable amount and GNO balance
+        async function fetchData() {
+            if (!currentAccount) return;
+
+            try {
+                withdrawableAmount.textContent = 'Loading...';
+                gnoBalance.textContent = 'Loading...';
+                withdrawableAmount.classList.add('loading');
+                gnoBalance.classList.add('loading');
+                refreshButton.disabled = true;
+                refreshButton.textContent = 'Refreshing...';
+
+                // Create function calls
+                // withdrawableAmount(address) - function selector: 0x1ac51b98
+                const withdrawableData = '0x1ac51b98' + encodeAddress(currentAccount);
+                
+                // balanceOf(address) for ERC20 - function selector: 0x70a08231
+                const balanceData = '0x70a08231' + encodeAddress(currentAccount);
+
+                // Make contract calls
+                const [withdrawableResult, gnoBalanceResult] = await Promise.all([
+                    callContract(VALIDATOR_CONTRACT_ADDRESS, withdrawableData),
+                    callContract(GNO_TOKEN_ADDRESS, balanceData)
+                ]);
+
+                // Format and display results
+                const withdrawableEth = formatEther(withdrawableResult);
+                const gnoBalanceFormatted = formatEther(gnoBalanceResult);
+
+                withdrawableAmount.textContent = `${withdrawableEth} ETH`;
+                gnoBalance.textContent = `${gnoBalanceFormatted} GNO`;
+
+                // Enable claim button if there are rewards to claim
+                claimButton.disabled = parseFloat(withdrawableEth) === 0;
+
+            } catch (error) {
+                showError(`Failed to fetch data: ${error.message}`);
+                withdrawableAmount.textContent = 'Error loading';
+                gnoBalance.textContent = 'Error loading';
+            } finally {
+                withdrawableAmount.classList.remove('loading');
+                gnoBalance.classList.remove('loading');
+                refreshButton.disabled = false;
+                refreshButton.textContent = 'Refresh Data';
+            }
+        }
+
+        // Claim rewards
+        async function claimRewards() {
+            if (!currentAccount) return;
+
+            try {
+                claimButton.disabled = true;
+                claimButton.textContent = 'Claiming...';
+                hideMessages();
+
+                // claimWithdrawal(address) - function selector: 0x5cc4aa9f
+                const claimData = '0x5cc4aa9f' + encodeAddress(currentAccount);
+
+                const txHash = await sendTransaction(VALIDATOR_CONTRACT_ADDRESS, claimData);
+                
+                showSuccess(`Transaction submitted! Hash: ${txHash}`);
+
+                // Refresh data after a delay
+                setTimeout(async () => {
+                    await fetchData();
+                    showSuccess('Rewards claimed successfully!');
+                }, 3000);
+
+            } catch (error) {
+                showError(`Failed to claim rewards: ${error.message}`);
+            } finally {
+                claimButton.disabled = false;
+                claimButton.textContent = 'Claim Rewards';
+            }
+        }
+
+        // Event listeners
+        connectButton.addEventListener('click', connectWallet);
+        claimButton.addEventListener('click', claimRewards);
+        refreshButton.addEventListener('click', fetchData);
+
+        // Listen for account changes
+        if (window.ethereum) {
+            window.ethereum.on('accountsChanged', (accounts) => {
+                if (accounts.length === 0) {
+                    // Wallet disconnected
+                    currentAccount = null;
+                    connectSection.classList.remove('hidden');
+                    walletSection.classList.add('hidden');
+                    hideMessages();
+                } else {
+                    // Account switched
+                    currentAccount = accounts[0];
+                    accountAddress.textContent = currentAccount;
+                    fetchData();
+                }
+            });
+
+            window.ethereum.on('chainChanged', (chainId) => {
+                // Refresh the page when chain changes
+                window.location.reload();
+            });
+        }
+
+        // Check if already connected on page load
+        async function checkConnection() {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({
+                        method: 'eth_accounts'
+                    });
+                    
+                    if (accounts.length > 0) {
+                        currentAccount = accounts[0];
+                        connectSection.classList.add('hidden');
+                        walletSection.classList.remove('hidden');
+                        accountAddress.textContent = currentAccount;
+                        await fetchData();
+                    }
+                } catch (error) {
+                    console.error('Failed to check connection:', error);
+                }
+            }
+        }
+
+        // Initialize app
+        checkConnection();
+    </script>
+    </script>
+</body>
+</html>
