@@ -264,55 +264,57 @@ function render() {
                 </div>
             `}
 
-            <!-- Address Lookup Section -->
-            <div class="card">
-                <h2>Check Any Address</h2>
-                <p>Enter any Ethereum address to check its validator rewards and GNO balance.</p>
-                <div style="margin-bottom: 16px;">
-                    <input 
-                        type="text" 
-                        id="address-input" 
-                        placeholder="0x..." 
-                        value="${appState.lookupAddress}"
-                        style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: 'Monaco', 'Menlo', monospace; font-size: 14px;"
-                        ${appState.isLookupLoading ? 'disabled' : ''}
-                    />
-                </div>
-                <button 
-                    id="lookup-button" 
-                    class="button" 
-                    ${appState.isLookupLoading || !appState.lookupAddress ? 'disabled' : ''}
-                    style="background: #48bb78; margin-bottom: 16px;"
-                >
-                    ${appState.isLookupLoading ? 'Checking...' : 'Check Address'}
-                </button>
-                
-                ${appState.lookupAddress && (appState.lookupWithdrawableAmount !== '0' || appState.lookupGnoBalance !== '0' || appState.lookupValidatorCount > 0) ? `
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px;">
-                        <div class="label">Address: ${appState.lookupAddress}</div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
-                            <div>
-                                <div class="label" style="font-size: 12px;">Validator Rewards</div>
-                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
-                                    ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupWithdrawableAmount).toFixed(6)} GNO`}
+            ${!isConnected ? `
+                <!-- Address Lookup Section - Only show when not connected -->
+                <div class="card">
+                    <h2>Check Any Address</h2>
+                    <p>Enter any Ethereum address to check its validator rewards and GNO balance.</p>
+                    <div style="margin-bottom: 16px;">
+                        <input 
+                            type="text" 
+                            id="address-input" 
+                            placeholder="0x..." 
+                            value="${appState.lookupAddress}"
+                            style="width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-family: 'Monaco', 'Menlo', monospace; font-size: 14px;"
+                            ${appState.isLookupLoading ? 'disabled' : ''}
+                        />
+                    </div>
+                    <button 
+                        id="lookup-button" 
+                        class="button" 
+                        ${appState.isLookupLoading || !appState.lookupAddress ? 'disabled' : ''}
+                        style="background: #48bb78; margin-bottom: 16px;"
+                    >
+                        ${appState.isLookupLoading ? 'Checking...' : 'Check Address'}
+                    </button>
+                    
+                    ${appState.lookupAddress && (appState.lookupWithdrawableAmount !== '0' || appState.lookupGnoBalance !== '0' || appState.lookupValidatorCount > 0) ? `
+                        <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 16px;">
+                            <div class="label">Address: ${appState.lookupAddress}</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 12px;">
+                                <div>
+                                    <div class="label" style="font-size: 12px;">Validator Rewards</div>
+                                    <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                        ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupWithdrawableAmount).toFixed(6)} GNO`}
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <div class="label" style="font-size: 12px;">GNO Balance</div>
-                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
-                                    ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupGnoBalance).toFixed(6)} GNO`}
+                                <div>
+                                    <div class="label" style="font-size: 12px;">GNO Balance</div>
+                                    <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                        ${appState.isLookupLoading ? 'Loading...' : `${parseFloat(appState.lookupGnoBalance).toFixed(6)} GNO`}
+                                    </div>
                                 </div>
-                            </div>
-                            <div>
-                                <div class="label" style="font-size: 12px;">Validators Staked</div>
-                                <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
-                                    ${appState.isLookupLoading ? 'Loading...' : `${appState.lookupValidatorCount} GNO`}
+                                <div>
+                                    <div class="label" style="font-size: 12px;">Validators Staked</div>
+                                    <div class="balance ${appState.isLookupLoading ? 'loading' : ''}" style="font-size: 18px;">
+                                        ${appState.isLookupLoading ? 'Loading...' : `${appState.lookupValidatorCount} GNO`}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ` : ''}
-            </div>
+                    ` : ''}
+                </div>
+            ` : ''}
 
             ${appState.message.text ? `
                 <div class="${appState.message.type}">
